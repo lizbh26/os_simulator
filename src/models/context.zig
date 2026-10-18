@@ -17,6 +17,7 @@ pub const ExecutionContext = struct {
     random: std.Random,
 
     process_count: usize,
+    quantum: usize,
 
     new_queue: Queue(Process.Process),
     ready_queue: Queue(Process.Process),
@@ -33,6 +34,7 @@ pub const ExecutionContext = struct {
         self.arena = std.heap.ArenaAllocator.init(extern_alloc);
         self.random = random;
         self.process_count = 0;
+        self.quantum = 0;
         self.prev_tick = null;
         self.time_ellapsed_ms = 0;
         self.window_dimensions = .{ .w = 0, .h = 0 };
@@ -41,7 +43,7 @@ pub const ExecutionContext = struct {
         self.arena.deinit();
     }
 
-    pub fn kickstart(self: *Self, pCount: usize) !void {
+    pub fn kickstart(self: *Self, pCount: usize, rrQuantum: usize) !void {
         const alloc = self.arena.allocator();
         self.new_queue = try .init(alloc);
         self.ready_queue = try .init(alloc);
@@ -52,6 +54,7 @@ pub const ExecutionContext = struct {
         for (0..pCount) |_| {
             try self.createProcess();
         }
+        self.quantum = rrQuantum;
     }
     pub fn createProcess(self: *Self) !void {
         const alloc = self.arena.allocator();

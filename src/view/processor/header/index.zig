@@ -18,6 +18,7 @@ const usize_to = @import("~").utils.usize_to;
 pub const Header = struct {
     arena: Arena,
 
+    quantumLabel: Label,
     title: Label,
     timerWidget: TimerWidget,
 
@@ -25,6 +26,7 @@ pub const Header = struct {
         self.arena = Arena.init(extern_alloc);
         const alloc = self.arena.allocator();
 
+        self.quantumLabel.init(alloc);
         self.title.init(alloc);
         self.timerWidget.init(alloc, ctx);
     }
@@ -39,7 +41,15 @@ pub const Header = struct {
         try self.title.changeText(if (queuedNewProcesses > 0) try std.fmt.allocPrint(self.arena.allocator(), "{d} proceso{s} nuevo{s} en espera", .{ queuedNewProcesses, plural_S, plural_S }) else "");
     }
 
+    pub fn setQuantumLabel(self: *Header, quantum: usize) !void {
+        try self.quantumLabel.changeText(try std.fmt.allocPrint(self.arena.allocator(), "Quantum: {d}", .{quantum}));
+    }
+
     pub fn draw(self: *Header, win: Window) !void {
+        const quantumLabelWidth = usize_to(u16, self.quantumLabel.getWidth());
+        const quantumLabelChild = win.child(.{ .x_off = 1, .width = quantumLabelWidth, .height = 1 });
+        self.quantumLabel.draw(quantumLabelChild);
+
         const titleWidth = usize_to(u16, self.title.getWidth());
         const titleChild = win.child(.{ .x_off = @divTrunc(win.width - titleWidth, 2), .y_off = 0, .width = titleWidth, .height = 1 });
         self.title.draw(titleChild);

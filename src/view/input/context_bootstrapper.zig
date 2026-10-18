@@ -15,6 +15,7 @@ const Input = @import("components/input.zig");
 
 const inputs = [_]Input.WidgetConfig{
     .{ .label = "Número de procesos", .maxInputSize = 2, .type = .number },
+    .{ .label = "Quantum", .maxInputSize = 2, .type = .number },
 };
 
 pub const ContextBootstrapperWidget = struct {
@@ -24,7 +25,7 @@ pub const ContextBootstrapperWidget = struct {
     pub fn init(self: *ContextBootstrapperWidget, extern_alloc: std.mem.Allocator) void {
         self.arena = Arena.init(extern_alloc);
         self.inputList.init(&.{ .alloc = self.arena.allocator(), .inputs = &inputs });
-        self.inputList.title.changeText("Ingresa el número de procesos") catch unreachable;
+        self.inputList.title.changeText("Ingresa los parámetros de la simulación") catch unreachable;
     }
 
     pub fn deinit(self: *ContextBootstrapperWidget) void {
@@ -33,8 +34,12 @@ pub const ContextBootstrapperWidget = struct {
 
     pub fn prepareContext(self: *ContextBootstrapperWidget, ctx: *ExecutionContext) !void {
         const processCountInput = self.inputList.getInputAt(0);
-        const pCount = std.fmt.parseInt(u16, processCountInput, 10) catch unreachable;
-        return try ctx.kickstart(pCount);
+        const pCount = std.fmt.parseInt(usize, processCountInput, 10) catch unreachable;
+
+        const rrQuantumInput = self.inputList.getInputAt(1);
+        const rrQuantum = std.fmt.parseInt(usize, rrQuantumInput, 10) catch unreachable;
+
+        return try ctx.kickstart(pCount, rrQuantum);
     }
     pub fn isDone(self: *ContextBootstrapperWidget) bool {
         return self.inputList.isDone();

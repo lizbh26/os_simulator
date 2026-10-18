@@ -83,6 +83,7 @@ pub const ProcessorOrchestratorWidget = struct {
     }
 
     pub fn kickstart(self: *ProcessorOrchestratorWidget) !void {
+        try self.header.setQuantumLabel(self.ctx.quantum);
         try self.completedProcessesPanel.kickstart();
     }
 
