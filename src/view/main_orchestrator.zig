@@ -47,8 +47,14 @@ pub const MainOrchestrator = struct {
             .processor => try self.processorOrchestrator.handleInput(key),
         }
     }
-    pub fn handleWindowResize(self: *MainOrchestrator, ws: vaxis.Winsize) void {
+    pub fn handleWindowResize(self: *MainOrchestrator, ws: vaxis.Winsize) !void {
         self.ctx.window_dimensions = .{ .w = ws.cols, .h = ws.rows };
+        switch (self.phase) {
+            .processor => {
+                try self.processorOrchestrator.handleWindowResize();
+            },
+            else => {},
+        }
     }
 
     pub fn tick(self: *MainOrchestrator, now: zeit.Instant) !void {

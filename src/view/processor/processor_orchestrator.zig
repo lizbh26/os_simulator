@@ -69,6 +69,7 @@ pub const ProcessorOrchestratorWidget = struct {
                     self.view = .overview;
                 } else if (key.matches('n', .{})) {
                     try self.ctx.createProcess();
+                    try self.completedProcessesPanel.ensureSufficientCards();
                 }
             } else if (key.matches('c', .{})) {
                 try self.restart();
@@ -80,6 +81,9 @@ pub const ProcessorOrchestratorWidget = struct {
         } else if (self.view == .overview) {
             self.contextOverviewWidget.handleInput(key);
         }
+    }
+    pub fn handleWindowResize(self: *ProcessorOrchestratorWidget) !void {
+        try self.completedProcessesPanel.ensureSufficientCards();
     }
 
     pub fn kickstart(self: *ProcessorOrchestratorWidget) !void {

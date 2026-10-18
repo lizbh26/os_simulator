@@ -27,6 +27,7 @@ pub const CompletedProcessesWidget = struct {
         const alloc = self.arena.allocator();
 
         self.title.init(alloc);
+        self.cards = &.{};
         self.cardOffset = 0;
     }
 
@@ -38,11 +39,20 @@ pub const CompletedProcessesWidget = struct {
     }
 
     pub fn kickstart(self: *CompletedProcessesWidget) !void {
-        const alloc = self.arena.allocator();
-        self.cards = try alloc.alloc(ProcessCardWidget, self.ctx.process_count);
+        try self.ensureSufficientCards();
+    }
 
-        for (0..self.cards.len) |i| {
-            self.cards[i].init(alloc, .completed);
+    pub fn ensureSufficientCards(self: *CompletedProcessesWidget) !void {
+        const maxCardsInWindow: u16 = @divFloor(self.ctx.window_dimensions.h, ProcessCardWidget.getTypeHeight(.completed)) + 1;
+
+        if (self.cards.len < maxCardsInWindow) {
+            const alloc = self.arena.allocator();
+            alloc.free(self.cards);
+
+            self.cards = try alloc.alloc(ProcessCardWidget, maxCardsInWindow - self.cards.len);
+            for (self.cards) |*card| {
+                card.init(alloc, .completed);
+            }
         }
     }
 
@@ -65,7 +75,7 @@ pub const CompletedProcessesWidget = struct {
         for (self.cards) |*card| {
             if (card.process == null) continue;
 
-            const width = card.getWidth(win);
+            const width = ProcessCardWidget.getWidth(win);
             const height = card.getHeight();
             const child = win.child(.{ .x_off = @divTrunc((win.width - width), 2), .y_off = y_off, .width = width, .height = height });
             card.draw(child);
@@ -78,17 +88,17 @@ pub const CompletedProcessesWidget = struct {
 
     fn updateCards(self: *CompletedProcessesWidget) !void {
         const queue = &self.ctx.finished_queue;
-        const len = queue.len;
 
-        const plural_S = if (len == 1) "" else "s";
-        const msg: []const u8 = if (self.ctx.isComplete()) "Todos los procesos terminados" else try std.fmt.allocPrint(self.arena.allocator(), "{d} proceso{s} terminado{s}", .{ len, plural_S, plural_S });
+        const plural_S = if (queue.len == 1) "" else "s";
+        const msg: []const u8 = if (self.ctx.isComplete()) "Todos los procesos terminados" else try std.fmt.allocPrint(self.arena.allocator(), "{d} proceso{s} terminado{s}", .{ queue.len, plural_S, plural_S });
         try self.title.changeText(msg);
 
-        for (0..len - self.cardOffset) |i| {
+        const visibleCards = @min(queue.len - self.cardOffset, self.cards.len);
+        for (0..visibleCards) |i| {
             const p = queue.get(i + self.cardOffset) catch unreachable;
             try self.cards[i].updateProcess(p);
         }
-        for (len - self.cardOffset..self.cards.len) |i| {
+        for (visibleCards..self.cards.len) |i| {
             self.cards[i].process = null;
         }
     }

@@ -14,6 +14,8 @@ const PADDING_X_INNER = 1;
 
 pub const CardType = enum { pending, doing, completed };
 pub const ProcessCard = struct {
+    const Self = @This();
+
     arena: std.heap.ArenaAllocator,
 
     process: ?*Process,
@@ -23,7 +25,7 @@ pub const ProcessCard = struct {
     opLabel: LabelWidget,
     timeLabel: LabelWidget,
 
-    pub fn init(self: *ProcessCard, extern_alloc: std.mem.Allocator, cardType: CardType) void {
+    pub fn init(self: *Self, extern_alloc: std.mem.Allocator, cardType: CardType) void {
         self.arena = std.heap.ArenaAllocator.init(extern_alloc);
         const alloc = self.arena.allocator();
 
@@ -37,11 +39,11 @@ pub const ProcessCard = struct {
         self.process = null;
     }
 
-    pub fn deinit(self: *ProcessCard) void {
+    pub fn deinit(self: *Self) void {
         self.arena.deinit();
     }
 
-    pub fn updateProcess(self: *ProcessCard, process: *Process) !void {
+    pub fn updateProcess(self: *Self, process: *Process) !void {
         const alloc = self.arena.allocator();
         self.process = process;
 
@@ -54,18 +56,21 @@ pub const ProcessCard = struct {
         try self.timeLabel.changeText(try std.fmt.allocPrint(alloc, "TME: {d}  TT: {d}  TR: {d}", .{ time_estimated, time_taken, time_remaining }));
     }
 
-    pub fn getWidth(_: *ProcessCard, win: Window) u16 {
+    pub fn getWidth(win: Window) u16 {
         return @min(win.width, MAX_CARD_WIDTH);
     }
-    pub fn getHeight(self: *ProcessCard) u16 {
-        if (self.type == .doing) return 5;
+    pub fn getHeight(self: Self) u16 {
+        return ProcessCard.getTypeHeight(self.type);
+    }
+    pub fn getTypeHeight(cardType: CardType) u16 {
+        if (cardType == .doing) return 5;
         return 4;
     }
 
-    pub fn draw(self: *ProcessCard, win: Window) void {
+    pub fn draw(self: *Self, win: Window) void {
         if (self.process == null) return;
 
-        const container = win.child(.{ .x_off = 0, .y_off = 0, .width = self.getWidth(win), .height = self.getHeight(), .border = .{ .where = .all, .style = .{ .fg = .{ .index = 255 } } } });
+        const container = win.child(.{ .x_off = 0, .y_off = 0, .width = Self.getWidth(win), .height = self.getHeight(), .border = .{ .where = .all, .style = .{ .fg = .{ .index = 255 } } } });
 
         const idLabelWidth = container.width - PADDING_X_INNER * 2;
         const idChild = container.child(.{ .x_off = PADDING_X_INNER, .y_off = 0, .width = idLabelWidth, .height = 1 });
