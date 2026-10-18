@@ -132,8 +132,8 @@ pub const InputListWidget = struct {
     }
 
     fn getDimensions(self: *InputListWidget, win: Window) struct { u16, u16 } {
-        var w: u16 = 0;
-        var h: u16 = 0;
+        var w: u16 = usize_to(u16, self.title.getWidth());
+        var h: u16 = 1;
 
         for (self.inputs) |*input| {
             w = @max(input.getWidth(), w);
