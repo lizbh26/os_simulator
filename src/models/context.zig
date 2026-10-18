@@ -57,14 +57,24 @@ pub const ExecutionContext = struct {
         for (0..pCount) |_| {
             try self.createProcess();
         }
+        self.dispatchReadyProcess();
+
         self.quantum = rrQuantum;
     }
     pub fn createProcess(self: *Self) !void {
         const alloc = self.arena.allocator();
         const p = try alloc.create(Process.Process);
+
         self.process_count += 1;
         try p.seed(self.random, alloc, .{ .id = self.process_count });
+
         try self.new_queue.enqueue(p);
+        if (try self.getProcessesInMemory() < MAX_PROCESSES_IN_MEMORY) try self.admitNewProcess();
+    }
+    fn getProcessesInMemory(self: *Self) !usize {
+        var count = self.ready_queue.len + self.blocked_queue.len;
+        if (self.current_process) |_| count += 1;
+        return count;
     }
 
     pub fn tick(self: *Self, now: zeit.Instant) !void {
@@ -76,7 +86,7 @@ pub const ExecutionContext = struct {
 
             self.time_ellapsed_ms += delta_ms;
             try self.tickBlockedProcesses(delta_ms);
-            try self.fillConcurrentProcesses();
+            try self.tickCurrentQuantum(delta_ms);
             try self.executeCurrentProcess(delta_ms);
         }
 
@@ -86,81 +96,61 @@ pub const ExecutionContext = struct {
         self.prev_tick = null;
     }
 
-    fn countProcessesInMemory(self: Self) usize {
-        return self.ready_queue.len + self.blocked_queue.len;
-    }
-    // NEW -> READY
-    fn fillConcurrentProcesses(self: *Self) !void {
-        var count = self.countProcessesInMemory();
-        while (count < MAX_PROCESSES_IN_MEMORY - 1) {
-            const p = self.new_queue.dequeue() catch break;
-            try self.ready_queue.enqueue(p);
-            p.arrival_time_ms = self.time_ellapsed_ms;
-            count += 1;
-        }
-    }
-    fn executeCurrentProcess(self: *Self, delta_ms: i128) !void {
-        if (self.current_process == null) {
-            self.changeCurrentProcess();
-        }
-        const p = self.current_process.?;
-
-        if (p.response_time_ms == null) p.response_time_ms = self.time_ellapsed_ms - p.arrival_time_ms else p.service_time_ms += delta_ms;
-        if (p.isDone()) {
-            try self.completeCurrentProcess();
-        } else {
-            try self.tickCurrentQuantum(delta_ms);
-        }
-    }
-    fn tickCurrentQuantum(self: *Self, delta_ms: i128) !void {
-        if (self.current_process == null) return;
-
-        self.current_quantum_ms += delta_ms;
-        if (self.current_quantum_ms > self.quantum * MILLI_IN_SECONDS) {
-            try self.moveCurrentToReady();
-        }
-    }
-    // READY -> EXECUTING
-    fn changeCurrentProcess(self: *Self) void {
-        self.current_process = self.ready_queue.dequeue() catch null;
-        self.current_quantum_ms = 0;
-    }
-
-    // BLOCKED -> READY
     fn tickBlockedProcesses(self: *Self, delta_ms: i128) !void {
         for (0..self.blocked_queue.len) |i| {
             const bp = self.blocked_queue.get(i) catch unreachable;
             bp.ellapsed_ms += delta_ms;
         }
         const top = self.blocked_queue.peek() catch return;
-        if (top.isDone()) {
-            try self.ready_queue.enqueue(top.p);
-            _ = self.blocked_queue.dequeue() catch unreachable;
-            self.arena.allocator().destroy(top);
+        if (top.isDone())
+            try self.unblockProcess(top);
+    }
+    fn tickCurrentQuantum(self: *Self, delta_ms: i128) !void {
+        if (self.current_process == null) return;
+        self.current_quantum_ms += delta_ms;
+        if (self.current_quantum_ms > self.quantum * MILLI_IN_SECONDS) {
+            try self.timeoutCurrentProcess();
         }
     }
+    fn executeCurrentProcess(self: *Self, delta_ms: i128) !void {
+        self.dispatchReadyProcess();
+        const p = self.current_process orelse return;
 
-    pub fn getCurrentProcess(self: *Self) *Process.Process {
-        return self.current_process orelse &NULL_PROCESS;
-    }
-    pub fn completeCurrentProcess(self: *Self) !void {
-        if (self.current_process == null) return error.InvalidAccess;
-        self.current_process.?.operation.calculate();
-        try self.moveCurrentToFinalized();
-    }
-    pub fn failCurrentProcess(self: *Self) void {
-        if (self.current_process != null)
-            self.moveCurrentToFinalized() catch unreachable;
-    }
-    // READY -> DONE
-    fn moveCurrentToFinalized(self: *Self) !void {
-        const p = self.current_process orelse return error.InvalidAccess;
-        p.finalization_time_ms = self.time_ellapsed_ms;
+        if (p.response_time_ms == null) p.response_time_ms = self.time_ellapsed_ms - p.arrival_time_ms else p.service_time_ms += delta_ms;
 
-        try self.finished_queue.enqueue(p);
-        self.changeCurrentProcess();
+        if (p.isDone()) {
+            self.current_process.?.operation.calculate();
+            try self.releaseDispatchAndAdmit();
+        }
     }
-    // EXECUTING -> BLOCKED
+    pub fn failCurrentProcess(self: *Self) !void {
+        try self.releaseDispatchAndAdmit();
+    }
+    fn releaseDispatchAndAdmit(self: *Self) !void {
+        try self.releaseCurrentProcess();
+        self.dispatchReadyProcess();
+        try self.admitNewProcess();
+    }
+
+    // NEW -> READY
+    fn admitNewProcess(self: *Self) !void {
+        const p = self.new_queue.dequeue() catch return;
+        try self.ready_queue.enqueue(p);
+        p.arrival_time_ms = self.time_ellapsed_ms;
+    }
+    // READY -> RUNNING
+    fn dispatchReadyProcess(self: *Self) void {
+        if (self.current_process != null) return;
+        self.current_process = self.ready_queue.dequeue() catch null;
+        self.current_quantum_ms = 0;
+    }
+    // RUNNING -> READY
+    fn timeoutCurrentProcess(self: *Self) !void {
+        const p = self.current_process orelse return;
+        try self.ready_queue.enqueue(p);
+        self.current_process = null;
+    }
+    // RUNNING -> BLOCKED
     pub fn blockCurrentProcess(self: *Self) !void {
         const p = self.current_process orelse return;
 
@@ -168,15 +158,25 @@ pub const ExecutionContext = struct {
         blocked.init(p);
         try self.blocked_queue.enqueue(blocked);
 
-        self.changeCurrentProcess();
+        self.current_process = null;
     }
-    // EXECUTING -> READY
-    fn moveCurrentToReady(self: *Self) !void {
+    // BLOCKED -> READY
+    fn unblockProcess(self: *Self, bp: *Process.BlockedProcess) !void {
+        try self.ready_queue.enqueue(bp.p);
+        _ = self.blocked_queue.dequeue() catch unreachable;
+        self.arena.allocator().destroy(bp);
+    }
+    // RUNNING -> DONE
+    fn releaseCurrentProcess(self: *Self) !void {
         const p = self.current_process orelse return;
-        self.changeCurrentProcess();
-        try self.ready_queue.enqueue(p);
+        p.finalization_time_ms = self.time_ellapsed_ms;
+        try self.finished_queue.enqueue(p);
+        self.current_process = null;
     }
 
+    pub fn getCurrentProcess(self: *Self) *Process.Process {
+        return self.current_process orelse &NULL_PROCESS;
+    }
     pub fn isComplete(self: Self) bool {
         return self.finished_queue.len == self.process_count;
     }
