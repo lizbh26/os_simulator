@@ -7,6 +7,7 @@ const zeit = @import("zeit");
 const usize_to = @import("../utils/index.zig").usize_to;
 
 pub const MAX_PROCESSES_IN_MEMORY = 5;
+const MILLI_IN_SECONDS = 1000;
 
 var NULL_PROCESS: Process.Process = .{ .id = "NULO", .arrival_time_ms = 0, .finalization_time_ms = 0, .response_time_ms = null, .estimated_time_ms = 1, .service_time_ms = 0, .operation = .{ .a = 0, .b = 0, .operand = .sum, .result = null } };
 
@@ -27,6 +28,7 @@ pub const ExecutionContext = struct {
 
     prev_tick: ?zeit.Instant,
     time_ellapsed_ms: i128,
+    current_quantum_ms: i128,
 
     window_dimensions: struct { w: u16, h: u16 },
 
@@ -37,6 +39,7 @@ pub const ExecutionContext = struct {
         self.quantum = 0;
         self.prev_tick = null;
         self.time_ellapsed_ms = 0;
+        self.current_quantum_ms = 0;
         self.window_dimensions = .{ .w = 0, .h = 0 };
     }
     pub fn deinit(self: *Self) void {
@@ -86,6 +89,7 @@ pub const ExecutionContext = struct {
     fn countProcessesInMemory(self: Self) usize {
         return self.ready_queue.len + self.blocked_queue.len;
     }
+    // NEW -> READY
     fn fillConcurrentProcesses(self: *Self) !void {
         var count = self.countProcessesInMemory();
         while (count < MAX_PROCESSES_IN_MEMORY - 1) {
@@ -97,15 +101,32 @@ pub const ExecutionContext = struct {
     }
     fn executeCurrentProcess(self: *Self, delta_ms: i128) !void {
         if (self.current_process == null) {
-            self.current_process = self.ready_queue.dequeue() catch return;
+            self.changeCurrentProcess();
         }
         const p = self.current_process.?;
 
         if (p.response_time_ms == null) p.response_time_ms = self.time_ellapsed_ms - p.arrival_time_ms else p.service_time_ms += delta_ms;
         if (p.isDone()) {
             try self.completeCurrentProcess();
+        } else {
+            try self.tickCurrentQuantum(delta_ms);
         }
     }
+    fn tickCurrentQuantum(self: *Self, delta_ms: i128) !void {
+        if (self.current_process == null) return;
+
+        self.current_quantum_ms += delta_ms;
+        if (self.current_quantum_ms > self.quantum * MILLI_IN_SECONDS) {
+            try self.moveCurrentToReady();
+        }
+    }
+    // READY -> EXECUTING
+    fn changeCurrentProcess(self: *Self) void {
+        self.current_process = self.ready_queue.dequeue() catch null;
+        self.current_quantum_ms = 0;
+    }
+
+    // BLOCKED -> READY
     fn tickBlockedProcesses(self: *Self, delta_ms: i128) !void {
         for (0..self.blocked_queue.len) |i| {
             const bp = self.blocked_queue.get(i) catch unreachable;
@@ -131,14 +152,15 @@ pub const ExecutionContext = struct {
         if (self.current_process != null)
             self.moveCurrentToFinalized() catch unreachable;
     }
+    // READY -> DONE
     fn moveCurrentToFinalized(self: *Self) !void {
         const p = self.current_process orelse return error.InvalidAccess;
         p.finalization_time_ms = self.time_ellapsed_ms;
 
         try self.finished_queue.enqueue(p);
-        self.current_process = self.ready_queue.dequeue() catch null;
+        self.changeCurrentProcess();
     }
-
+    // EXECUTING -> BLOCKED
     pub fn blockCurrentProcess(self: *Self) !void {
         const p = self.current_process orelse return;
 
@@ -146,7 +168,13 @@ pub const ExecutionContext = struct {
         blocked.init(p);
         try self.blocked_queue.enqueue(blocked);
 
-        self.current_process = null;
+        self.changeCurrentProcess();
+    }
+    // EXECUTING -> READY
+    fn moveCurrentToReady(self: *Self) !void {
+        const p = self.current_process orelse return;
+        self.changeCurrentProcess();
+        try self.ready_queue.enqueue(p);
     }
 
     pub fn isComplete(self: Self) bool {
