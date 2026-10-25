@@ -47,13 +47,13 @@ pub const ProcessCard = struct {
         const alloc = self.arena.allocator();
         self.process = process;
 
-        try self.idLabel.changeText(try std.fmt.allocPrint(alloc, "ID: {s}", .{process.id}));
+        try self.idLabel.changeText(try alloc.print("ID: {s}", .{process.id}));
         try self.opLabel.changeText(try std.mem.concat(alloc, u8, &.{ "OP: ", try process.operation.toString(alloc, self.type == .completed) }));
 
         const time_estimated = @divTrunc(process.estimated_time_ms, 1000);
         const time_taken = @divTrunc(process.service_time_ms, 1000);
         const time_remaining = time_estimated - time_taken;
-        try self.timeLabel.changeText(try std.fmt.allocPrint(alloc, "TME: {d}  TT: {d}  TR: {d}", .{ time_estimated, time_taken, time_remaining }));
+        try self.timeLabel.changeText(try alloc.print("TME: {d}  TT: {d}  TR: {d}", .{ time_estimated, time_taken, time_remaining }));
     }
 
     pub fn getWidth(win: Window) u16 {

@@ -87,7 +87,7 @@ pub const PendingProcessesWidget = struct {
         const len = self.ctx.ready_queue.len;
 
         const plural_S = if (len == 1) "" else "s";
-        const msg: []const u8 = if (len == 0) "Sin procesos listos" else try std.fmt.allocPrint(alloc, "{d} proceso{s} listo{s} en cola", .{ len, plural_S, plural_S });
+        const msg: []const u8 = if (len == 0) "Sin procesos listos" else try alloc.print("{d} proceso{s} listo{s} en cola", .{ len, plural_S, plural_S });
         try self.ready_title.changeText(msg);
 
         const titleWidth = usize_to(u16, self.ready_title.getWidth());
@@ -111,7 +111,7 @@ pub const PendingProcessesWidget = struct {
         if (len == 0) return;
 
         const plural_S = if (len == 1) "" else "s";
-        const msg: []const u8 = if (len == 0) "Sin procesos bloqueados" else try std.fmt.allocPrint(alloc, "{d} proceso{s} bloqueado{s}", .{ len, plural_S, plural_S });
+        const msg: []const u8 = if (len == 0) "Sin procesos bloqueados" else try alloc.print("{d} proceso{s} bloqueado{s}", .{ len, plural_S, plural_S });
         try self.blocked_title.changeText(msg);
 
         const titleWidth = usize_to(u16, self.blocked_title.getWidth());

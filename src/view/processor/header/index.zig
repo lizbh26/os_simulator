@@ -38,11 +38,11 @@ pub const Header = struct {
 
     pub fn setQueuedNewProcessesLabel(self: *Header, queuedNewProcesses: usize) !void {
         const plural_S = if (queuedNewProcesses == 1) "" else "s";
-        try self.title.changeText(if (queuedNewProcesses > 0) try std.fmt.allocPrint(self.arena.allocator(), "{d} proceso{s} nuevo{s} en espera", .{ queuedNewProcesses, plural_S, plural_S }) else "");
+        try self.title.changeText(if (queuedNewProcesses > 0) try self.arena.allocator().print("{d} proceso{s} nuevo{s} en espera", .{ queuedNewProcesses, plural_S, plural_S }) else "");
     }
 
     pub fn setQuantumLabel(self: *Header, quantum: usize) !void {
-        try self.quantumLabel.changeText(try std.fmt.allocPrint(self.arena.allocator(), "Quantum: {d}", .{quantum}));
+        try self.quantumLabel.changeText(try self.arena.allocator().print("Quantum: {d}", .{quantum}));
     }
 
     pub fn draw(self: *Header, win: Window) !void {

@@ -47,8 +47,8 @@ pub const ProcessStripWidget = struct {
         const stage = data.stage;
         const total_ellapsed_ms = data.total_ellapsed_ms;
 
-        try self.idLabel.changeText(try std.fmt.allocPrint(alloc, "ID: {s}    {s}  ", .{ p.id, Process.processStageToString(stage) }));
-        try self.opLabel.changeText(try std.fmt.allocPrint(alloc, "  OP: {s}  ", .{try p.operation.toString(alloc, stage == .finalized)}));
+        try self.idLabel.changeText(try alloc.print("ID: {s}    {s}  ", .{ p.id, Process.processStageToString(stage) }));
+        try self.opLabel.changeText(try alloc.print("  OP: {s}  ", .{try p.operation.toString(alloc, stage == .finalized)}));
 
         const arrival_time = if (stage == .new) "N/A" else try time.time_to_string(alloc, time.milliseconds_to_time(p.arrival_time_ms));
         const response_time = if (p.response_time_ms) |rt| try time.time_to_string(alloc, time.milliseconds_to_time(rt)) else "N/A";
@@ -62,14 +62,14 @@ pub const ProcessStripWidget = struct {
 
         const finalization_time = if (p.finalization_time_ms < 0) "N/A" else try time.time_to_string(alloc, time.milliseconds_to_time(p.finalization_time_ms));
 
-        var time_str = try std.fmt.allocPrint(alloc, "  T.Lle: {s}  T.Fin: {s}  T.Res: {s}  T.Ser: {s}  T.Esp: {s}  T.Ret: {s}  ", .{ arrival_time, finalization_time, response_time, service_time, wait_time, return_time });
+        var time_str = try alloc.print("  T.Lle: {s}  T.Fin: {s}  T.Res: {s}  T.Ser: {s}  T.Esp: {s}  T.Ret: {s}  ", .{ arrival_time, finalization_time, response_time, service_time, wait_time, return_time });
 
         if (data.blocked_ms) |blocked| {
             const blocked_time = try time.time_to_string(alloc, time.milliseconds_to_time(blocked));
-            time_str = try std.fmt.allocPrint(alloc, "{s}T.Bloqueado: {s}  ", .{ time_str, blocked_time });
+            time_str = try alloc.print("{s}T.Bloqueado: {s}  ", .{ time_str, blocked_time });
         } else if (stage != .finalized and stage != .new) {
             const remaining_time = try time.time_to_string(alloc, time.milliseconds_to_time(p.estimated_time_ms - p.service_time_ms));
-            time_str = try std.fmt.allocPrint(alloc, "{s}T.Restante: {s}  ", .{ time_str, remaining_time });
+            time_str = try alloc.print("{s}T.Restante: {s}  ", .{ time_str, remaining_time });
         }
 
         try self.timeLabel.changeText(time_str);

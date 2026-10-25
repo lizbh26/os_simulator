@@ -27,7 +27,7 @@ pub const Process = struct {
     finalization_time_ms: i128, // Tiempo de finalizacion
 
     pub fn seed(self: *Process, random: std.Random, alloc: std.mem.Allocator, data: struct { id: usize }) !void {
-        self.id = try std.fmt.allocPrint(alloc, "{d}", .{data.id});
+        self.id = try alloc.print("{d}", .{data.id});
         self.operation.seed(random);
 
         self.estimated_time_ms = random.intRangeAtMost(i128, 5, 20) * 1000;

@@ -39,7 +39,7 @@ pub const CurrentProcessExecutionWidget = struct {
     pub fn draw(self: *CurrentProcessExecutionWidget, win: Window) !void {
         const alloc = self.arena.allocator();
 
-        const titleMsg: []const u8 = if (self.ctx.isComplete()) "Sin procesos a ejecutar" else try std.fmt.allocPrint(alloc, "Proceso en ejecución: {s}", .{self.ctx.getCurrentProcess().id});
+        const titleMsg: []const u8 = if (self.ctx.isComplete()) "Sin procesos a ejecutar" else try alloc.print("Proceso en ejecución: {s}", .{self.ctx.getCurrentProcess().id});
         try self.title.changeText(titleMsg);
 
         const titleWidth = usize_to(u16, self.title.getWidth());
@@ -48,7 +48,7 @@ pub const CurrentProcessExecutionWidget = struct {
 
         if (self.ctx.current_process != null) {
             const currentQuantumTime = try time.time_to_string(alloc, time.milliseconds_to_time(self.ctx.current_quantum_ms));
-            const currentQuantumMsg = try std.fmt.allocPrint(alloc, "Tiempo del quantum: {s}", .{currentQuantumTime});
+            const currentQuantumMsg = try alloc.print("Tiempo del quantum: {s}", .{currentQuantumTime});
             try self.currentQuantumLabel.changeText(currentQuantumMsg);
 
             const quantumLabelWidth = usize_to(u16, self.currentQuantumLabel.getWidth());

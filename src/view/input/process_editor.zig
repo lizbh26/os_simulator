@@ -66,7 +66,7 @@ pub const EditProcessWidget = struct {
     }
 
     pub fn draw(self: *EditProcessWidget, win: Window) !void {
-        try self.inputList.title.changeText(try std.fmt.allocPrint(self.arena.allocator(), "Ingresa el proceso {d} de {d}", .{ self.ctx.current_process_idx + 1, self.ctx.process_count }));
+        try self.inputList.title.changeText(try self.arena.allocator().print("Ingresa el proceso {d} de {d}", .{ self.ctx.current_process_idx + 1, self.ctx.process_count }));
         try self.inputList.draw(win);
     }
 };

@@ -40,9 +40,9 @@ pub const BlockedProcessCard = struct {
         const alloc = self.arena.allocator();
         self.blocked_process = bp;
 
-        try self.idLabel.changeText(try std.fmt.allocPrint(alloc, "ID: {s}", .{bp.p.id}));
+        try self.idLabel.changeText(try alloc.print("ID: {s}", .{bp.p.id}));
         const time_taken = @divTrunc(bp.ellapsed_ms, 1000);
-        try self.timeLabel.changeText(try std.fmt.allocPrint(alloc, "Tiempo bloqueado: {d}", .{time_taken}));
+        try self.timeLabel.changeText(try alloc.print("Tiempo bloqueado: {d}", .{time_taken}));
     }
 
     pub fn getWidth(_: Self, win: Window) u16 {

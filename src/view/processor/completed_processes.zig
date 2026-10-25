@@ -90,7 +90,7 @@ pub const CompletedProcessesWidget = struct {
         const queue = &self.ctx.finished_queue;
 
         const plural_S = if (queue.len == 1) "" else "s";
-        const msg: []const u8 = if (self.ctx.isComplete()) "Todos los procesos terminados" else try std.fmt.allocPrint(self.arena.allocator(), "{d} proceso{s} terminado{s}", .{ queue.len, plural_S, plural_S });
+        const msg: []const u8 = if (self.ctx.isComplete()) "Todos los procesos terminados" else try self.arena.allocator().print("{d} proceso{s} terminado{s}", .{ queue.len, plural_S, plural_S });
         try self.title.changeText(msg);
 
         const visibleCards = @min(queue.len - self.cardOffset, self.cards.len);

@@ -13,20 +13,20 @@ pub fn time_to_string(alloc: std.mem.Allocator, diff: zeit.Time) ![]const u8 {
     defer localArena.deinit();
     const localAlloc = localArena.allocator();
 
-    const hours = if (diff.hour > 0) try std.fmt.allocPrint(localAlloc, "{d}:", .{diff.hour}) else "";
+    const hours = if (diff.hour > 0) try localAlloc.print("{d}:", .{diff.hour}) else "";
 
     var minutes: []const u8 = "";
     if (diff.minute > 0) {
-        minutes = try std.fmt.allocPrint(localAlloc, "{d}:", .{diff.minute});
+        minutes = try localAlloc.print("{d}:", .{diff.minute});
         if (minutes.len == 2)
             minutes = leftpad(minutes, 1, '0', localAlloc);
     }
 
-    var seconds: []const u8 = try std.fmt.allocPrint(localAlloc, "{d}.", .{diff.second});
+    var seconds: []const u8 = try localAlloc.print("{d}.", .{diff.second});
     if (diff.second < 10)
         seconds = leftpad(seconds, 1, '0', localAlloc);
 
-    var milliseconds: []const u8 = try std.fmt.allocPrint(localAlloc, "{d}", .{diff.millisecond});
+    var milliseconds: []const u8 = try localAlloc.print("{d}", .{diff.millisecond});
     if (milliseconds.len < 3)
         milliseconds = leftpad(milliseconds, 3 - milliseconds.len, '0', localAlloc);
 

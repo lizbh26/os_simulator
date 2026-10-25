@@ -54,13 +54,13 @@ pub const Operation = struct {
                 .remainder => '%',
             };
 
-        var op = try std.fmt.allocPrint(alloc, "{d} {c} {d}", .{ self.a, operand, self.b });
+        var op = try alloc.print("{d} {c} {d}", .{ self.a, operand, self.b });
         if (displayResult) {
             var res: []const u8 = undefined;
             if (self.result == null) {
                 res = try alloc.dupe(u8, " = ERROR");
             } else {
-                res = try std.fmt.allocPrint(alloc, " = {d:.4}", .{self.result.?});
+                res = try alloc.print(" = {d:.4}", .{self.result.?});
             }
             defer alloc.free(res);
 
