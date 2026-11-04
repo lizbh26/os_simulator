@@ -1,8 +1,8 @@
-# Batch Processor
+# OS Simulator
 
-A terminal-based process monitor simulator born with a simple batch system (hence the name) written in [Zig](https://ziglang.org/) for my university course on Operating Systems.
+A terminal-based Operating System simulator written in [Zig](https://ziglang.org/) for my university course on Operating Systems.
 
-Batch Processor lets you create and observe simulated processes as they move through different execution states. The application provides an interactive terminal user interface for configuring processes and monitoring execution statistics in real time.
+OS Simulator lets you create and observe simulated processes as they move through different execution states. The application provides an interactive terminal user interface for configuring processes and monitoring execution statistics in real time.
 
 ## Features
 
@@ -44,8 +44,8 @@ This project uses:
 Clone the repository:
 
 ```bash
-git clone https://github.com/lizbh26/batch_processor.git
-cd batch_processor
+git clone https://github.com/lizbh26/os_simulator.git
+cd os_simulator
 ```
 
 Build the application:
@@ -57,7 +57,7 @@ zig build
 The compiled executable will be placed in the Zig installation directory:
 
 ```text
-zig-out/bin/batch_processor
+zig-out/bin/os_simulator
 ```
 
 ## Running
@@ -71,7 +71,7 @@ zig build run
 You can also run the compiled executable:
 
 ```bash
-./zig-out/bin/batch_processor
+./zig-out/bin/os_simulator
 ```
 
 ## Testing
