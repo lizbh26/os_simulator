@@ -1,51 +1,61 @@
 const std = @import("std");
 const vaxis = @import("vaxis");
-const vxfw = vaxis.vxfw;
 
 const Window = vaxis.Window;
 const TextView = vaxis.widgets.TextView;
 
-const count_utf8 = @import("~").utils.count_utf8;
+const countUtf8 = @import("~").utils.countUtf8;
+const usizeTo = @import("~").utils.usizeTo;
 
-pub const LabelWidget = struct {
-    alloc: std.mem.Allocator,
+const Self = @This();
 
-    view: TextView,
-    buffer: TextView.Buffer,
+alloc: std.mem.Allocator,
 
-    pub fn init(self: *LabelWidget, alloc: std.mem.Allocator) void {
-        self.alloc = alloc;
-        self.view = .{};
-        self.buffer = TextView.Buffer{};
-    }
+view: TextView,
+buffer: TextView.Buffer,
 
-    pub fn deinit(self: *LabelWidget) void {
-        self.buffer.deinit(self.alloc);
-    }
+pub fn init(alloc: std.mem.Allocator) Self {
+    return .{
+        .alloc = alloc,
+        .view = .{ .scroll_view = .{ .vertical_scrollbar = null } },
+        .buffer = TextView.Buffer{},
+    };
+}
 
-    pub fn isEmpty(self: *LabelWidget) bool {
-        return self.getText().len == 0;
-    }
-    pub fn getText(self: *const LabelWidget) []const u8 {
-        return self.buffer.content.items;
-    }
-    pub fn getWidth(self: *const LabelWidget) usize {
-        return count_utf8(self.getText()) + 1;
-    }
+pub fn deinit(self: *Self) void {
+    self.buffer.deinit(self.alloc);
+}
 
-    pub fn changeText(self: *LabelWidget, newText: []const u8) !void {
-        if (std.mem.eql(u8, self.getText(), newText)) return;
+pub fn isEmpty(self: Self) bool {
+    return self.getText().len == 0;
+}
+pub fn getText(self: Self) []const u8 {
+    return self.buffer.content.items;
+}
+pub fn getWidth(self: Self) usize {
+    return countUtf8(self.getText());
+}
 
-        self.buffer.clear(self.alloc);
-        try self.buffer.append(self.alloc, .{ .bytes = newText });
-    }
+pub fn changeText(self: *Self, newText: []const u8) !void {
+    if (std.mem.eql(u8, self.getText(), newText)) return;
 
-    pub fn updateStyle(self: *LabelWidget, style: vaxis.Style) void {
-        self.buffer.updateStyle(self.alloc, .{ .begin = 0, .end = self.buffer.style_map.size, .style = style }) catch {};
-    }
+    self.buffer.clear(self.alloc);
+    try self.buffer.append(self.alloc, .{ .bytes = newText });
+}
 
-    pub fn draw(self: *LabelWidget, win: Window) void {
-        if (self.buffer.content.items.len > 0)
-            self.view.draw(win, self.buffer);
-    }
-};
+pub fn updateStyle(self: *Self, style: vaxis.Style) void {
+    self.buffer.updateStyle(self.alloc, .{
+        .begin = 0,
+        .end = self.buffer.content.items.len,
+        .style = style,
+    }) catch {};
+}
+
+pub fn draw(self: *Self, win: Window) void {
+    if (self.buffer.content.items.len < 0) return;
+    const child = win.child(.{
+        .width = @min(usizeTo(u16, self.getWidth()), win.width),
+        .height = 1,
+    });
+    self.view.draw(child, self.buffer);
+}
