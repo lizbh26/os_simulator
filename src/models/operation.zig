@@ -1,84 +1,84 @@
 const std = @import("std");
 
+const Self = @This();
 pub const Operand = enum { sum, diff, product, division, remainder };
-pub const Operation = struct {
-    a: i32 = 0,
-    b: i32 = 0,
-    operand: Operand = Operand.sum,
-    result: ?f32,
 
-    pub fn seed(self: *Operation, random: std.Random) void {
-        self.a = random.intRangeAtMost(i32, -9999, 9999);
-        self.b = random.intRangeAtMost(i32, -9999, 9999);
+a: i32 = 0,
+b: i32 = 0,
+operand: Operand = Operand.sum,
+result: ?f32,
 
-        switch (random.intRangeAtMost(u8, 1, 5)) {
-            1 => self.operand = .sum,
-            2 => self.operand = .diff,
-            3 => self.operand = .product,
-            4 => {
-                self.operand = .division;
-                if (self.b == 0) self.b = 1;
-            },
-            5 => {
-                self.operand = .remainder;
-                if (self.b == 0) self.b = 1;
-            },
-            else => unreachable,
-        }
+pub fn seed(self: *Self, random: std.Random) void {
+    self.a = random.intRangeAtMost(i32, -9999, 9999);
+    self.b = random.intRangeAtMost(i32, -9999, 9999);
 
-        self.result = null;
+    switch (random.intRangeAtMost(u8, 1, 5)) {
+        1 => self.operand = .sum,
+        2 => self.operand = .diff,
+        3 => self.operand = .product,
+        4 => {
+            self.operand = .division;
+            if (self.b == 0) self.b = 1;
+        },
+        5 => {
+            self.operand = .remainder;
+            if (self.b == 0) self.b = 1;
+        },
+        else => unreachable,
     }
 
-    pub fn calculate(self: *Operation) void {
-        if (self.result != null) return;
+    self.result = null;
+}
 
-        const a: f32 = @floatFromInt(self.a);
-        const b: f32 = @floatFromInt(self.b);
+pub fn calculate(self: *Self) void {
+    if (self.result != null) return;
 
-        self.result = switch (self.operand) {
-            .sum => a + b,
-            .diff => a - b,
-            .product => a * b,
-            .division => a / b,
-            .remainder => @mod(a, b),
+    const a: f32 = @floatFromInt(self.a);
+    const b: f32 = @floatFromInt(self.b);
+
+    self.result = switch (self.operand) {
+        .sum => a + b,
+        .diff => a - b,
+        .product => a * b,
+        .division => a / b,
+        .remainder => @mod(a, b),
+    };
+}
+
+pub fn toString(self: *Self, alloc: std.mem.Allocator, displayResult: bool) ![]const u8 {
+    const operand: u8 =
+        switch (self.operand) {
+            .sum => '+',
+            .diff => '-',
+            .product => '*',
+            .division => '/',
+            .remainder => '%',
         };
-    }
 
-    pub fn toString(self: *Operation, alloc: std.mem.Allocator, displayResult: bool) ![]const u8 {
-        const operand: u8 =
-            switch (self.operand) {
-                .sum => '+',
-                .diff => '-',
-                .product => '*',
-                .division => '/',
-                .remainder => '%',
-            };
-
-        var op = try alloc.print("{d} {c} {d}", .{ self.a, operand, self.b });
-        if (displayResult) {
-            var res: []const u8 = undefined;
-            if (self.result == null) {
-                res = try alloc.dupe(u8, " = ERROR");
-            } else {
-                res = try alloc.print(" = {d:.4}", .{self.result.?});
-            }
-            defer alloc.free(res);
-
-            const prevMem = (&op).*;
-            defer alloc.free(prevMem);
-
-            op = try std.mem.concat(alloc, u8, &.{ op, res });
+    var op = try alloc.print("{d} {c} {d}", .{ self.a, operand, self.b });
+    if (displayResult) {
+        var res: []const u8 = undefined;
+        if (self.result == null) {
+            res = try alloc.dupe(u8, " = ERROR");
+        } else {
+            res = try alloc.print(" = {d:.4}", .{self.result.?});
         }
-        return op;
-    }
+        defer alloc.free(res);
 
-    pub fn isInvalid(self: *Operation) bool {
-        return (self.operand == .division and self.b == 0);
+        const prevMem = (&op).*;
+        defer alloc.free(prevMem);
+
+        op = try std.mem.concat(alloc, u8, &.{ op, res });
     }
-};
+    return op;
+}
+
+pub fn isInvalid(self: *Self) bool {
+    return (self.operand == .division and self.b == 0);
+}
 
 pub const ParsingError = error{ InvalidOperation, DivisionByZero, Overflow, InvalidCharacter };
-pub fn fromString(str: []const u8) ParsingError!Operation {
+pub fn fromString(str: []const u8) ParsingError!Self {
     var op_index: ?usize = null;
     var op_type: ?Operand = null;
     var op_len: usize = 1; // Track operator length to slice 'b' correctly
@@ -145,7 +145,7 @@ pub fn fromString(str: []const u8) ParsingError!Operation {
 
     if (op_type.? == .division and b == 0) return error.DivisionByZero;
 
-    return Operation{
+    return Self{
         .a = a,
         .b = b,
         .operand = op_type.?,

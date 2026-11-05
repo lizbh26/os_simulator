@@ -1,25 +1,10 @@
 const std = @import("std");
 const zeit = @import("zeit");
 
-const models = @import("~").models;
-const Process = models.Process;
+const Process = @import("~").models.Process;
 const Queue = @import("~").utils.Queue;
 
 const MAX_PROCESSES_IN_MEMORY = 5;
-var NULL_PROCESS: Process = .{
-    .id = "NULO",
-    .arrival_time_ms = 0,
-    .finalization_time_ms = 0,
-    .response_time_ms = null,
-    .estimated_time_ms = 1,
-    .service_time_ms = 0,
-    .operation = .{
-        .a = 0,
-        .b = 0,
-        .operand = .sum,
-        .result = null,
-    },
-};
 
 const Self = @This();
 
@@ -76,10 +61,10 @@ pub fn kickstart(self: *Self, pCount: usize, rrQuantum: usize) !void {
 }
 pub fn createProcess(self: *Self) !void {
     const alloc = self.arena.allocator();
-    const p = try alloc.create(Process.Process);
+    const p = try alloc.create(Process);
 
     self.process_count += 1;
-    try p.seed(self.random, alloc, .{ .id = self.process_count });
+    try p.seed(alloc, self.randomSource.interface(), self.process_count);
 
     try self.new_queue.enqueue(p);
     if (try self.getProcessesInMemory() < MAX_PROCESSES_IN_MEMORY) try self.admitNewProcess();
@@ -188,7 +173,7 @@ fn releaseCurrentProcess(self: *Self) !void {
 }
 
 pub fn getCurrentProcess(self: Self) *const Process.Process {
-    return self.current_process orelse &NULL_PROCESS;
+    return self.current_process orelse &Process.NULL_PROCESS;
 }
 pub fn isComplete(self: Self) bool {
     return self.finished_queue.len == self.process_count;
