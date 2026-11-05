@@ -158,11 +158,13 @@ Additional controls may be available depending on the active input or processor 
 ├── build.zig
 ├── build.zig.zon
 └── src
-    ├── controller.zig
+    ├── controllers
+    │   ├── application_controller.zig
+    │   ├── context_controller.zig
+    │   └── render_controller.zig
     ├── main.zig
     ├── root.zig
     ├── models
-    │   ├── context.zig
     │   ├── operation.zig
     │   ├── process.zig
     │   └── queue.zig
@@ -179,8 +181,9 @@ Additional controls may be available depending on the active input or processor 
 
 ### Core Components
 
-- `controller.zig` initializes the terminal, processes input events, manages the render loop, and coordinates screen updates.
-- `models/context.zig` manages the execution context and process queues.
+- `controllers/application_controller.zig` owns application initialization, cleanup, and frame timing.
+- `controllers/context_controller.zig` manages the execution context and simulation ticks.
+- `controllers/render_controller.zig` manages the terminal, input events, resize handling, and rendering.
 - `models/process.zig` defines process state and timing metrics.
 - `models/operation.zig` defines arithmetic operations and expression parsing.
 - `models/queue.zig` provides a generic doubly linked queue.
