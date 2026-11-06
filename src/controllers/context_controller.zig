@@ -1,12 +1,7 @@
 const std = @import("std");
 const zeit = @import("zeit");
 
-const models = @import("~").models;
-const Process = models.Process;
-const Queue = models.Queue;
-const SystemPlanner = models.SystemPlanner;
-
-const MAX_PROCESSES_IN_MEMORY = 5;
+const SystemPlanner = @import("~").models.SystemPlanner;
 
 const Self = @This();
 

@@ -2,7 +2,6 @@ const std = @import("std");
 const Arena = std.heap.ArenaAllocator;
 
 const vaxis = @import("vaxis");
-const vxfw = vaxis.vxfw;
 const Window = vaxis.Window;
 const Label = @import("../components/label.zig").LabelWidget;
 

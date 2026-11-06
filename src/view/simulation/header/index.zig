@@ -1,10 +1,8 @@
 const std = @import("std");
-const zeit = @import("zeit");
 
 const Allocator = std.mem.Allocator;
 
 const vaxis = @import("vaxis");
-const vxfw = vaxis.vxfw;
 const Window = vaxis.Window;
 
 const Label = @import("../../components/label.zig");

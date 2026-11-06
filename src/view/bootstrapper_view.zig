@@ -1,6 +1,5 @@
 const std = @import("std");
 const vaxis = @import("vaxis");
-const vxfw = vaxis.vxfw;
 
 const Allocator = std.mem.Allocator;
 const Arena = std.heap.ArenaAllocator;
