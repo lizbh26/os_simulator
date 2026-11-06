@@ -6,7 +6,7 @@ const Operation = @import("operation.zig");
 const Self = @This();
 id: []const u8,
 
-operation: Operation.Operation,
+operation: Operation,
 
 estimated_time_ms: i128,
 service_time_ms: i128 = 0, // Tiempo de servicio
@@ -15,21 +15,22 @@ arrival_time_ms: i128, // Tiempo de llegada
 response_time_ms: ?i128, // Tiempo de respuesta
 finalization_time_ms: i128, // Tiempo de finalizacion
 
-pub fn seed(
-    self: Self,
+pub fn init(
     alloc: std.mem.Allocator,
     random: std.Random,
     id: usize,
-) !void {
-    self.id = try alloc.print("{d}", .{id});
-    self.operation.seed(random);
+) !Self {
+    return .{
+        .id = try alloc.print("{d}", .{id}),
+        .operation = .init(random),
 
-    self.estimated_time_ms = random.intRangeAtMost(i128, 5, 20) * 1000;
-    self.service_time_ms = 0;
+        .estimated_time_ms = random.intRangeAtMost(i128, 5, 20) * 1000,
+        .service_time_ms = 0,
 
-    self.arrival_time_ms = 0;
-    self.response_time_ms = null;
-    self.finalization_time_ms = -1;
+        .arrival_time_ms = 0,
+        .response_time_ms = null,
+        .finalization_time_ms = -1,
+    };
 }
 
 pub fn isDone(self: Self) bool {

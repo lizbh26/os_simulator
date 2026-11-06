@@ -8,26 +8,31 @@ b: i32 = 0,
 operand: Operand = Operand.sum,
 result: ?f32,
 
-pub fn seed(self: *Self, random: std.Random) void {
-    self.a = random.intRangeAtMost(i32, -9999, 9999);
-    self.b = random.intRangeAtMost(i32, -9999, 9999);
+pub fn init(random: std.Random) Self {
+    const a = random.intRangeAtMost(i32, -9999, 9999);
+    var b = random.intRangeAtMost(i32, -9999, 9999);
 
-    switch (random.intRangeAtMost(u8, 1, 5)) {
-        1 => self.operand = .sum,
-        2 => self.operand = .diff,
-        3 => self.operand = .product,
-        4 => {
-            self.operand = .division;
-            if (self.b == 0) self.b = 1;
+    const operand: Operand = switch (random.intRangeAtMost(u8, 1, 5)) {
+        1 => .sum,
+        2 => .diff,
+        3 => .product,
+        4 => blk: {
+            if (b == 0) b = 1;
+            break :blk .division;
         },
-        5 => {
-            self.operand = .remainder;
-            if (self.b == 0) self.b = 1;
+        5 => blk: {
+            if (b == 0) b = 1;
+            break :blk .remainder;
         },
         else => unreachable,
-    }
+    };
 
-    self.result = null;
+    return .{
+        .a = a,
+        .b = b,
+        .operand = operand,
+        .result = null,
+    };
 }
 
 pub fn calculate(self: *Self) void {

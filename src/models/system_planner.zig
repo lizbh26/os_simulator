@@ -45,7 +45,7 @@ pub fn init(
     alloc: std.mem.Allocator,
     ctx: InitContext,
 ) !void {
-    self = .{
+    self.* = .{
         .alloc = alloc,
         .random = ctx.random,
 
@@ -58,7 +58,6 @@ pub fn init(
         .blocked_queue = try .init(alloc),
         .finished_queue = try .init(alloc),
 
-        .prev_tick = null,
         .total_ellapsed = ctx.total_ellapsed,
         .current_quantum_ms = 0,
     };
@@ -73,11 +72,10 @@ pub fn bootstrap(self: *Self, ctx: BootstrappingContext) !void {
     self.dispatchReadyProcess();
 }
 pub fn createProcess(self: *Self) !void {
-    const alloc = self.arena.allocator();
-    const p = try alloc.create(Process);
+    const p = try self.alloc.create(Process);
 
     self.process_count += 1;
-    try p.seed(alloc, self.randomSource.interface(), self.process_count);
+    p.* = try .init(self.alloc, self.random, self.process_count);
 
     try self.new_queue.enqueue(p);
     if (try self.getProcessesInMemory() < MAX_PROCESSES_IN_MEMORY) try self.admitNewProcess();
@@ -139,7 +137,7 @@ fn releaseDispatchAndAdmit(self: *Self) !void {
 fn admitNewProcess(self: *Self) !void {
     const p = self.new_queue.dequeue() catch return;
     try self.ready_queue.enqueue(p);
-    p.arrival_time_ms = self.total_ellapsed;
+    p.arrival_time_ms = self.total_ellapsed.*;
 }
 // READY -> RUNNING
 fn dispatchReadyProcess(self: *Self) void {
@@ -157,7 +155,7 @@ fn timeoutCurrentProcess(self: *Self) !void {
 pub fn blockCurrentProcess(self: *Self) !void {
     const p = self.current_process orelse return;
 
-    const blocked = try self.arena.allocator().create(Process.BlockedProcess);
+    const blocked = try self.alloc.create(Process.BlockedProcess);
     blocked.init(p);
     try self.blocked_queue.enqueue(blocked);
 
@@ -167,12 +165,12 @@ pub fn blockCurrentProcess(self: *Self) !void {
 fn unblockProcess(self: *Self, bp: *Process.BlockedProcess) !void {
     try self.ready_queue.enqueue(bp.p);
     _ = self.blocked_queue.dequeue() catch unreachable;
-    self.arena.allocator().destroy(bp);
+    self.alloc.destroy(bp);
 }
 // RUNNING -> DONE
 fn releaseCurrentProcess(self: *Self) !void {
     const p = self.current_process orelse return;
-    p.finalization_time_ms = self.total_ellapsed;
+    p.finalization_time_ms = self.total_ellapsed.*;
     try self.finished_queue.enqueue(p);
     self.current_process = null;
 }
