@@ -1,12 +1,10 @@
 const std = @import("std");
-const zeit = @import("zeit");
 const vaxis = @import("vaxis");
 const vxfw = vaxis.vxfw;
 
 const Window = vaxis.Window;
 
 const models = @import("~").models;
-const ExecutionContext = models.Context.ExecutionContext;
 
 const Arena = std.heap.ArenaAllocator;
 const usize_to = @import("~").utils.usize_to;
@@ -22,7 +20,6 @@ const HEADER_WIDTH = 2;
 const FOOTER_WIDTH = 2;
 pub const ProcessorOrchestratorWidget = struct {
     arena: Arena,
-    ctx: *ExecutionContext,
 
     header: Header,
     pendingProcessesPanel: PendingProcessesPanelWidget,
@@ -31,15 +28,12 @@ pub const ProcessorOrchestratorWidget = struct {
     contextOverviewWidget: ContextOverviewWidget,
     footer: Footer,
 
-    running: bool,
     view: enum { panels, overview },
 
-    pub fn init(self: *ProcessorOrchestratorWidget, extern_alloc: std.mem.Allocator, ctx: *ExecutionContext) void {
+    pub fn init(self: *ProcessorOrchestratorWidget, extern_alloc: std.mem.Allocator) void {
         self.arena = Arena.init(extern_alloc);
         const alloc = self.arena.allocator();
 
-        self.ctx = ctx;
-        self.running = true;
         self.view = .panels;
 
         self.header.init(alloc, self.ctx);
@@ -56,11 +50,11 @@ pub const ProcessorOrchestratorWidget = struct {
 
     pub fn handleInput(self: *ProcessorOrchestratorWidget, key: vaxis.Key) !void {
         if (!self.ctx.isComplete()) {
-            if (self.running) {
+            if (self.context.running) {
                 if (key.matches('e', .{})) {
-                    try self.ctx.blockCurrentProcess();
+                    try self.context.blockCurrentProcess();
                 } else if (key.matches('w', .{})) {
-                    try self.ctx.failCurrentProcess();
+                    try self.context.failCurrentProcess();
                 } else if (key.matches('p', .{})) {
                     try self.stop();
                 } else if (key.matches('b', .{})) {
@@ -68,7 +62,7 @@ pub const ProcessorOrchestratorWidget = struct {
                     try self.contextOverviewWidget.update();
                     self.view = .overview;
                 } else if (key.matches('n', .{})) {
-                    try self.ctx.createProcess();
+                    try self.context.createProcess();
                     try self.completedProcessesPanel.ensureSufficientCards();
                 }
             } else if (key.matches('c', .{})) {
@@ -91,23 +85,19 @@ pub const ProcessorOrchestratorWidget = struct {
         try self.completedProcessesPanel.kickstart();
     }
 
-    pub fn tick(self: *ProcessorOrchestratorWidget, now: zeit.Instant) !void {
-        if (!self.running or self.view == .overview) return;
-        try self.ctx.tick(now);
-        if (self.ctx.isComplete()) {
-            self.running = false;
+    pub fn update(self: *ProcessorOrchestratorWidget) !void {
+        if (self.view == .panels and self.ctx.isComplete()) {
             try self.footer.showCompletedControls();
             try self.contextOverviewWidget.update();
             self.view = .overview;
         }
     }
     fn restart(self: *ProcessorOrchestratorWidget) !void {
-        self.running = true;
+        self.context.restart();
         try self.footer.showRunningControls();
     }
     fn stop(self: *ProcessorOrchestratorWidget) !void {
-        self.running = false;
-        self.ctx.stop();
+        self.context.pause();
         try self.footer.showPausedControls();
     }
 
