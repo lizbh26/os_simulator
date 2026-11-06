@@ -23,7 +23,7 @@ planner: SystemPlanner,
 plannerBootstrap: SystemPlanner.BootstrappingContext,
 
 pub fn init(self: *Self, alloc: std.mem.Allocator, io: std.Io) !void {
-    self = .{
+    self.* = .{
         .alloc = alloc,
         .randomSource = .{ .io = io },
 
@@ -37,10 +37,13 @@ pub fn init(self: *Self, alloc: std.mem.Allocator, io: std.Io) !void {
         .phase = .input,
     };
 
-    self.planner.init(alloc, .{
+    try self.planner.init(alloc, .{
         .random = self.randomSource.interface(),
         .total_ellapsed = &self.time_ellapsed_ms,
     });
+}
+pub fn deinit(self: *Self) void {
+    self.planner.deinit();
 }
 
 pub fn tick(self: *Self, now: zeit.Instant) !void {
@@ -52,15 +55,15 @@ pub fn tick(self: *Self, now: zeit.Instant) !void {
 
         self.time_ellapsed_ms += delta_ms;
 
-        switch (self.phase) {
+        try switch (self.phase) {
             .input => {
                 if (self.plannerBootstrap.ready) {
-                    self.planner.bootstrap(self.plannerBootstrap);
+                    try self.planner.bootstrap(self.plannerBootstrap);
                     self.phase = .simulation;
                 }
             },
             .simulation => self.planner.tick(delta_ms),
-        }
+        };
     }
 
     self.prev_tick = now;

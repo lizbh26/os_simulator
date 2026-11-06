@@ -2,17 +2,18 @@ const std = @import("std");
 const vaxis = @import("vaxis");
 const vxfw = vaxis.vxfw;
 
+const Allocator = std.mem.Allocator;
+const Arena = std.heap.ArenaAllocator;
+
 const Window = vaxis.Window;
 
-const Allocator = std.mem.Allocator;
 const usize_to = @import("~").utils.usize_to;
 
 const models = @import("~").models;
 
-const InputList = @import("components/input_list.zig");
-const Input = @import("components/input.zig");
+const Input = @import("components/input/index.zig");
 
-const inputs = [_]Input.InitConfig{
+const inputs = [_]Input.InputField.InitConfig{
     .{ .label = "Número de procesos", .maxInputSize = 2, .type = .number },
     .{ .label = "Quantum", .maxInputSize = 2, .type = .number },
 };
@@ -23,20 +24,19 @@ pub const InitConfig = struct {
     bootstrapCtx: *models.SystemPlanner.BootstrappingContext,
 };
 
-alloc: Allocator,
-inputList: InputList,
+arena: Arena,
+inputList: Input.InputList,
 config: InitConfig,
 
-pub fn init(self: *Self, alloc: std.mem.Allocator, config: InitConfig) !void {
+pub fn init(self: *Self, alloc: Allocator, config: InitConfig) !void {
     self.* = .{
-        .alloc = alloc,
+        .arena = Arena.init(alloc),
         .inputList = undefined,
         .config = config,
     };
-    self.inputList.init(.{ .alloc = self.alloc, .inputs = &inputs });
+    try self.inputList.init(.{ .alloc = self.arena.allocator(), .inputs = &inputs });
     try self.inputList.title.changeText("Ingresa los parámetros de la simulación");
 }
-
 pub fn deinit(self: *Self) void {
     self.arena.deinit();
 }

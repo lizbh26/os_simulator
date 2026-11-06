@@ -62,6 +62,12 @@ pub fn init(
         .current_quantum_ms = 0,
     };
 }
+pub fn deinit(self: *Self) void {
+    self.new_queue.deinit();
+    self.ready_queue.deinit();
+    self.blocked_queue.deinit();
+    self.finished_queue.deinit();
+}
 
 pub fn bootstrap(self: *Self, ctx: BootstrappingContext) !void {
     for (0..ctx.process_count) |_| {

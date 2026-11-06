@@ -2,7 +2,7 @@ const std = @import("std");
 const vaxis = @import("vaxis");
 
 const ContextController = @import("context_controller.zig");
-const MainOrchestrator = @import("../view/main_orchestrator.zig");
+const Views = @import("../view/index.zig");
 
 const Self = @This();
 
@@ -19,7 +19,7 @@ vx: vaxis.Vaxis,
 loop: vaxis.Loop(Event),
 
 context: *ContextController,
-orchestrator: MainOrchestrator,
+bootstrapperView: Views.BootstrapperView,
 
 pub fn init(
     self: *Self,
@@ -36,7 +36,7 @@ pub fn init(
         .loop = undefined,
 
         .context = ctx,
-        .orchestrator = undefined,
+        .bootstrapperView = undefined,
     };
     self.tty = try vaxis.Tty.init(init_p.io, &self.buffer);
     errdefer self.tty.deinit();
@@ -45,10 +45,11 @@ pub fn init(
     errdefer self.vx.deinit(alloc, self.tty.writer());
 
     self.loop = .init(init_p.io, &self.tty, &self.vx);
-    self.orchestrator.init(alloc, ctx);
+
+    try self.bootstrapperView.init(alloc, .{ .bootstrapCtx = &ctx.plannerBootstrap });
 }
 pub fn deinit(self: *Self) void {
-    self.orchestrator.deinit();
+    self.bootstrapperView.deinit();
     self.vx.deinit(self.alloc, self.tty.writer());
     self.tty.deinit();
 }
@@ -72,10 +73,6 @@ pub fn stopEventLoop(self: *Self) void {
     self.vx.exitAltScreen(self.tty.writer()) catch {};
 }
 
-pub fn update(self: *Self) !void {
-    try self.orchestrator.update();
-}
-
 pub fn handleEvents(self: *Self) !bool {
     while (try self.loop.tryEvent()) |event| {
         switch (event) {
@@ -85,20 +82,25 @@ pub fn handleEvents(self: *Self) !bool {
                 } else if (key.matches('l', .{ .ctrl = true })) {
                     self.vx.queueRefresh();
                 } else {
-                    try self.orchestrator.handleInput(key);
+                    try self.handleKey(key);
                 }
             },
 
             .winsize => |ws| {
                 try self.vx.resize(self.alloc, self.tty.writer(), ws);
                 self.vx.refresh = true;
-                try self.orchestrator.handleWindowResize(ws);
             },
             else => {},
         }
     }
 
     return false;
+}
+fn handleKey(self: *Self, key: vaxis.Key) !void {
+    switch (self.context.phase) {
+        .input => try self.bootstrapperView.handleInput(key),
+        .simulation => {},
+    }
 }
 
 pub fn draw(self: *Self) !void {
@@ -114,7 +116,10 @@ pub fn draw(self: *Self) !void {
 
     if (win.width < MIN_SCREEN_WIDTH or win.height < MIN_SCREEN_HEIGHT) return error.TerminalSize;
 
-    try self.orchestrator.draw(win);
+    try switch (self.context.phase) {
+        .input => self.bootstrapperView.draw(win),
+        .simulation => {},
+    };
 
     try self.vx.render(self.tty.writer());
     try self.tty.writer().flush();

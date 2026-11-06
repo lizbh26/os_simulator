@@ -4,8 +4,8 @@ const vaxis = @import("vaxis");
 const Window = vaxis.Window;
 const TextView = vaxis.widgets.TextView;
 
-const countUtf8 = @import("~").utils.countUtf8;
-const usizeTo = @import("~").utils.usizeTo;
+const countUtf8 = @import("~").utils.count_utf8;
+const usizeTo = @import("~").utils.usize_to;
 
 const Self = @This();
 

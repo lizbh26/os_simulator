@@ -7,22 +7,21 @@ const Self = @This();
 
 const FRAME_DURATION: zeit.Duration = .{ .microseconds = 16667 }; // 60 FPS
 
-arena: std.heap.ArenaAllocator,
+arena: *std.heap.ArenaAllocator,
 io: std.Io,
 context: ContextController,
 renderer: RenderController,
 
 pub fn init(self: *Self, init_p: *const std.process.Init) !void {
     self.* = .{
-        .arena = .init(init_p.gpa),
+        .arena = init_p.arena,
         .io = init_p.io,
         .context = undefined,
         .renderer = undefined,
     };
-    errdefer self.arena.deinit();
     const alloc = self.arena.allocator();
-    self.context.init(alloc, self.io);
-    errdefer self.context.deinit();
+
+    try self.context.init(alloc, self.io);
     try self.renderer.init(alloc, init_p, &self.context);
 }
 
@@ -40,7 +39,6 @@ pub fn startLoop(self: *Self) !void {
         const frameStart = self.getNow();
         if (try self.renderer.handleEvents()) break;
         try self.context.tick(frameStart);
-        try self.renderer.update();
         try self.renderer.draw();
         try self.waitRemainingFrameTime(frameStart, self.getNow());
     }

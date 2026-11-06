@@ -8,8 +8,8 @@ const Key = vaxis.Key;
 const count_utf8 = @import("~").utils.count_utf8;
 const usize_to = @import("~").utils.usize_to;
 
-const Input = @import("input.zig");
-const Label = @import("../../components/label.zig");
+const Input = @import("input_field.zig");
+const Label = @import("../label.zig");
 
 const PADDING_X = 5;
 const PADDING_Y = 2;
@@ -26,7 +26,7 @@ active_field_idx: usize,
 title: Label,
 maxRuntimeWidth: u16,
 
-pub fn init(self: *Self, config: InitConfig) void {
+pub fn init(self: *Self, config: InitConfig) !void {
     self.* = .{
         .alloc = config.alloc,
 
@@ -37,11 +37,11 @@ pub fn init(self: *Self, config: InitConfig) void {
         .maxRuntimeWidth = 0,
     };
 
-    self.inputs = self.alloc(Input.InputWidget, config.inputs.len) catch unreachable;
+    self.inputs = self.alloc.alloc(Input, config.inputs.len) catch unreachable;
     const largestLabelSize = findLargestLabelSize(config.inputs);
 
     for (config.inputs, 0..) |inputConfig, i| {
-        self.inputs[i].init(self.alloc, largestLabelSize, inputConfig);
+        try self.inputs[i].init(self.alloc, largestLabelSize, inputConfig);
     }
     self.getActiveInput().focus();
 }
@@ -66,7 +66,7 @@ pub fn getInputAt(self: *Self, idx: usize) []const u8 {
     if (idx > self.inputs.len) return "";
     return self.inputs[idx].getInputText(self.arena.allocator());
 }
-pub fn getActiveInput(self: *Self) *Input.InputWidget {
+pub fn getActiveInput(self: *Self) *Input {
     return &self.inputs[self.active_field_idx];
 }
 

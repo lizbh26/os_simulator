@@ -4,13 +4,12 @@ const vxfw = vaxis.vxfw;
 
 const Window = vaxis.Window;
 const TextInput = vaxis.widgets.TextInput;
-const Label = @import("../../components/label.zig");
+const Label = @import("../label.zig");
 
-const Arena = std.heap.ArenaAllocator;
 const usize_to = @import("~").utils.usize_to;
 const leftpad = @import("~").utils.leftpad;
 
-const Validators = @import("../utils/validators.zig");
+const Validators = @import("./utils/validators.zig");
 
 const MAX_INPUT_SIZE = 50;
 
@@ -29,7 +28,7 @@ focused: bool = false,
 
 config: InitConfig,
 
-pub fn init(self: *Self, alloc: std.mem.Allocator, maxLabelSize: ?u16, config: InitConfig) void {
+pub fn init(self: *Self, alloc: std.mem.Allocator, maxLabelSize: ?u16, config: InitConfig) !void {
     self.* = .{
         .alloc = alloc,
 
@@ -76,22 +75,15 @@ pub fn getInputText(self: *Self, alloc: std.mem.Allocator) []const u8 {
     return self.input.toOwnedContents(alloc) catch "";
 }
 pub fn getInputLength(self: *Self) u16 {
-    const alloc = self.arena.allocator();
-    const text = self.getInputText(alloc);
-    defer alloc.free(text);
+    const text = self.getInputText(self.alloc);
+    defer self.alloc.free(text);
 
     return usize_to(u16, text.len);
 }
 
 fn validateInput(self: *Self) []const u8 {
-    const alloc = self.arena.allocator();
-    const inputText = self.getInputText(alloc);
-    defer alloc.free(inputText);
-
-    if (self.config.ctxValidator != null and self.config.ctx != null) {
-        const msg = self.config.ctxValidator.?(inputText, self.config.ctx.?);
-        if (msg.len > 0) return msg;
-    }
+    const inputText = self.getInputText(self.alloc);
+    defer self.alloc.free(inputText);
 
     switch (self.config.type) {
         .text => return Validators.validateStringField(inputText),
@@ -101,10 +93,8 @@ fn validateInput(self: *Self) []const u8 {
 }
 
 pub fn isEmpty(self: *Self) bool {
-    const alloc = self.arena.allocator();
-
-    const text = self.getInputText(alloc);
-    defer alloc.free(text);
+    const text = self.getInputText(self.alloc);
+    defer self.alloc.free(text);
 
     return text.len == 0;
 }
