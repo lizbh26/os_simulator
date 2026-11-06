@@ -17,26 +17,30 @@ prev_tick: ?zeit.Instant,
 time_ellapsed_ms: i128,
 is_paused: bool,
 
+phase: enum { input, simulation },
+
 planner: SystemPlanner,
+plannerBootstrap: SystemPlanner.BootstrappingContext,
 
 pub fn init(self: *Self, alloc: std.mem.Allocator, io: std.Io) !void {
     self = .{
         .alloc = alloc,
         .randomSource = .{ .io = io },
+
         .prev_tick = null,
         .time_ellapsed_ms = 0,
         .is_paused = false,
+
         .planner = undefined,
+        .plannerBootstrap = .init(),
+
+        .phase = .input,
     };
 
     self.planner.init(alloc, .{
         .random = self.randomSource.interface(),
         .total_ellapsed = &self.time_ellapsed_ms,
     });
-}
-
-pub fn bootstrapPlanner(self: *Self, ctx: SystemPlanner) !void {
-    self.planner.bootstrap(ctx);
 }
 
 pub fn tick(self: *Self, now: zeit.Instant) !void {
@@ -47,7 +51,16 @@ pub fn tick(self: *Self, now: zeit.Instant) !void {
         const delta_ms = zeit.instant(.{ .unix_nano = delta_nano }, &zeit.utc).milliTimestamp();
 
         self.time_ellapsed_ms += delta_ms;
-        self.planner.tick(delta_ms);
+
+        switch (self.phase) {
+            .input => {
+                if (self.plannerBootstrap.ready) {
+                    self.planner.bootstrap(self.plannerBootstrap);
+                    self.phase = .simulation;
+                }
+            },
+            .simulation => self.planner.tick(delta_ms),
+        }
     }
 
     self.prev_tick = now;

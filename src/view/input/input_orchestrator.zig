@@ -4,40 +4,29 @@ const vxfw = vaxis.vxfw;
 
 const Window = vaxis.Window;
 
-const Arena = std.heap.ArenaAllocator;
+const Allocator = std.mem.Allocator;
 
-const ExecutionContext = @import("~").models.Context.ExecutionContext;
+const ContextBootstrapperWidget = @import("context_bootstrapper.zig");
 
-const ContextBootstrapperWidget = @import("context_bootstrapper.zig").ContextBootstrapperWidget;
+const Self = @This();
 
-pub const InputOrchestratorWidget = struct {
-    arena: Arena,
-    ctx: *ExecutionContext,
+alloc: Allocator,
+bootstrap_widget: ContextBootstrapperWidget,
+config: ContextBootstrapperWidget.InitConfig,
 
-    bootstrap_widget: ContextBootstrapperWidget,
+pub fn init(self: *Self, alloc: Allocator, config: ContextBootstrapperWidget.InitConfig) void {
+    self.* = .{
+        .alloc = alloc,
+        .bootstrap_widget = undefined,
+        .config = config,
+    };
+    try self.bootstrap_widget.init(alloc, config);
+}
 
-    pub fn init(self: *InputOrchestratorWidget, extern_alloc: std.mem.Allocator, ctx: *ExecutionContext) void {
-        self.arena = Arena.init(extern_alloc);
-        const alloc = self.arena.allocator();
-        self.ctx = ctx;
+pub fn handleInput(self: *Self, key: vaxis.Key) !void {
+    try self.bootstrap_widget.handleInput(key);
+}
 
-        self.bootstrap_widget.init(alloc);
-    }
-    pub fn deinit(self: *InputOrchestratorWidget) void {
-        self.arena.deinit();
-    }
-
-    pub fn handleInput(self: *InputOrchestratorWidget, key: vaxis.Key) !void {
-        try self.bootstrap_widget.handleInput(key);
-    }
-
-    pub fn tick(self: *InputOrchestratorWidget) !void {
-        if (self.bootstrap_widget.isDone()) {
-            try self.bootstrap_widget.prepareContext(self.ctx);
-        }
-    }
-
-    pub fn draw(self: *InputOrchestratorWidget, win: Window) !void {
-        try self.bootstrap_widget.draw(win);
-    }
-};
+pub fn draw(self: *Self, win: Window) !void {
+    try self.bootstrap_widget.draw(win);
+}

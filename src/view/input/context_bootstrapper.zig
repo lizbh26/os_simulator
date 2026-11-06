@@ -4,52 +4,57 @@ const vxfw = vaxis.vxfw;
 
 const Window = vaxis.Window;
 
-const Arena = std.heap.ArenaAllocator;
+const Allocator = std.mem.Allocator;
 const usize_to = @import("~").utils.usize_to;
 
 const models = @import("~").models;
-const ExecutionContext = models.Context.ExecutionContext;
 
 const InputList = @import("components/input_list.zig");
 const Input = @import("components/input.zig");
 
-const inputs = [_]Input.WidgetConfig{
+const inputs = [_]Input.InitConfig{
     .{ .label = "Número de procesos", .maxInputSize = 2, .type = .number },
     .{ .label = "Quantum", .maxInputSize = 2, .type = .number },
 };
 
-pub const ContextBootstrapperWidget = struct {
-    arena: Arena,
-    inputList: InputList.InputListWidget,
+const Self = @This();
 
-    pub fn init(self: *ContextBootstrapperWidget, extern_alloc: std.mem.Allocator) void {
-        self.arena = Arena.init(extern_alloc);
-        self.inputList.init(&.{ .alloc = self.arena.allocator(), .inputs = &inputs });
-        self.inputList.title.changeText("Ingresa los parámetros de la simulación") catch unreachable;
-    }
-
-    pub fn deinit(self: *ContextBootstrapperWidget) void {
-        self.arena.deinit();
-    }
-
-    pub fn prepareContext(self: *ContextBootstrapperWidget, ctx: *ExecutionContext) !void {
-        const processCountInput = self.inputList.getInputAt(0);
-        const pCount = std.fmt.parseInt(usize, processCountInput, 10) catch unreachable;
-
-        const rrQuantumInput = self.inputList.getInputAt(1);
-        const rrQuantum = std.fmt.parseInt(usize, rrQuantumInput, 10) catch unreachable;
-
-        return try ctx.kickstart(pCount, rrQuantum);
-    }
-    pub fn isDone(self: *ContextBootstrapperWidget) bool {
-        return self.inputList.isDone();
-    }
-
-    pub fn handleInput(self: *ContextBootstrapperWidget, key: vaxis.Key) !void {
-        try self.inputList.handleInput(key);
-    }
-
-    pub fn draw(self: *ContextBootstrapperWidget, win: Window) !void {
-        try self.inputList.draw(win);
-    }
+pub const InitConfig = struct {
+    bootstrapCtx: *models.SystemPlanner.BootstrappingContext,
 };
+
+alloc: Allocator,
+inputList: InputList,
+config: InitConfig,
+
+pub fn init(self: *Self, alloc: std.mem.Allocator, config: InitConfig) !void {
+    self.* = .{
+        .alloc = alloc,
+        .inputList = undefined,
+        .config = config,
+    };
+    self.inputList.init(.{ .alloc = self.alloc, .inputs = &inputs });
+    try self.inputList.title.changeText("Ingresa los parámetros de la simulación");
+}
+
+pub fn deinit(self: *Self) void {
+    self.arena.deinit();
+}
+
+pub fn prepareContext(self: *Self) void {
+    const processCountInput = self.inputList.getInputAt(0);
+    self.config.bootstrapCtx.process_count = try std.fmt.parseInt(usize, processCountInput, 10);
+
+    const rrQuantumInput = self.inputList.getInputAt(1);
+    self.config.bootstrapCtx.quantum = try std.fmt.parseInt(usize, rrQuantumInput, 10);
+
+    self.config.bootstrapCtx.ready = true;
+}
+
+pub fn handleInput(self: *Self, key: vaxis.Key) !void {
+    try self.inputList.handleInput(key);
+}
+
+pub fn draw(self: *Self, win: Window) !void {
+    try self.inputList.draw(win);
+}

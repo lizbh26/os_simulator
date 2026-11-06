@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const Process = @import("process.zig");
-const Queue = @import("queue.zig");
+const Queue = @import("queue.zig").Queue;
 
 const MAX_PROCESSES_IN_MEMORY = 5;
 
@@ -11,9 +11,18 @@ const InitContext = struct {
     random: std.Random,
     total_ellapsed: *const i128,
 };
-const BootstrappingContext = struct {
+pub const BootstrappingContext = struct {
+    ready: bool,
     process_count: usize,
     quantum: usize,
+
+    pub fn init() BootstrappingContext {
+        return .{
+            .ready = false,
+            .process_count = 0,
+            .quantum = 0,
+        };
+    }
 };
 
 alloc: std.mem.Allocator,
