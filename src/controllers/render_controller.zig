@@ -2,7 +2,7 @@ const std = @import("std");
 const vaxis = @import("vaxis");
 
 const ContextController = @import("context_controller.zig");
-const MainOrchestrator = @import("../view/main_orchestrator.zig").MainOrchestrator;
+const MainOrchestrator = @import("../view/main_orchestrator.zig");
 
 const Self = @This();
 
@@ -36,7 +36,7 @@ pub fn init(
         .loop = undefined,
 
         .context = ctx,
-        .main_view = undefined,
+        .orchestrator = undefined,
     };
     self.tty = try vaxis.Tty.init(init_p.io, &self.buffer);
     errdefer self.tty.deinit();
