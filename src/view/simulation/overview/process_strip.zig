@@ -17,6 +17,7 @@ const StripData = struct { p: *Process, stage: Process.ProcessStage, total_ellap
 const Self = @This();
 
 alloc: Allocator,
+style: vaxis.Style,
 
 idLabel: Label,
 opLabel: Label,
@@ -25,6 +26,17 @@ timeLabel: Label,
 pub fn init(self: *Self, alloc: Allocator, data: StripData) !void {
     self.* = .{
         .alloc = alloc,
+        .style = .{
+            .fg = .{
+                .index = switch (data.stage) {
+                    .new => 250,
+                    .ready => 12,
+                    .executing => 10,
+                    .blocked => 9,
+                    .finalized => 13,
+                },
+            },
+        },
         .idLabel = .init(alloc),
         .opLabel = .init(alloc),
         .timeLabel = .init(alloc),
@@ -128,6 +140,10 @@ fn update(self: *Self, data: StripData) !void {
     }
 
     try self.timeLabel.changeText(time_str);
+
+    self.idLabel.updateStyle(self.style);
+    self.opLabel.updateStyle(self.style);
+    self.timeLabel.updateStyle(self.style);
 }
 
 pub fn getDimensions(self: *Self, win: Window) struct { id: u16, op: u16, time: u16, total: u16, rows: u16 } {
@@ -150,19 +166,41 @@ pub fn getDimensions(self: *Self, win: Window) struct { id: u16, op: u16, time: 
         totalWidth += timeWidth;
     }
 
-    return .{ .id = idWidth, .op = opWidth, .time = timeWidth, .total = totalWidth, .rows = rows };
+    return .{
+        .id = idWidth,
+        .op = opWidth,
+        .time = timeWidth,
+        .total = totalWidth,
+        .rows = rows,
+    };
 }
 pub fn draw(self: *Self, win: Window) void {
     const dim = self.getDimensions(win);
 
-    const container = win.child(.{ .x_off = @divFloor(win.width - dim.total, 2), .width = @min(dim.total, win.width), .height = dim.rows + 1, .border = .{ .where = .bottom, .style = .{ .fg = .{ .index = 255 } } } });
+    const container = win.child(.{
+        .x_off = @divFloor(win.width - dim.total, 2),
+        .width = @min(dim.total, win.width),
+        .height = dim.rows + 1,
+        .border = .{
+            .where = .bottom,
+            .style = self.style,
+        },
+    });
 
     const idChild = container.child(.{ .width = dim.id });
     self.idLabel.draw(idChild);
 
-    const opChild = container.child(.{ .x_off = if (dim.rows == 3) 0 else dim.id, .y_off = if (dim.rows == 3) 1 else 0, .width = dim.op });
+    const opChild = container.child(.{
+        .x_off = if (dim.rows == 3) 0 else dim.id,
+        .y_off = if (dim.rows == 3) 1 else 0,
+        .width = dim.op,
+    });
     self.opLabel.draw(opChild);
 
-    const timeChild = container.child(.{ .x_off = if (dim.rows > 1) 0 else dim.id + dim.op, .y_off = dim.rows - 1, .width = dim.time });
+    const timeChild = container.child(.{
+        .x_off = if (dim.rows > 1) 0 else dim.id + dim.op,
+        .y_off = dim.rows - 1,
+        .width = dim.time,
+    });
     self.timeLabel.draw(timeChild);
 }
