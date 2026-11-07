@@ -64,7 +64,7 @@ pub fn isDone(self: *Self) bool {
 
 pub fn getInputAt(self: *Self, idx: usize) []const u8 {
     if (idx > self.inputs.len) return "";
-    return self.inputs[idx].getInputText(self.arena.allocator());
+    return self.inputs[idx].getInputText(self.alloc);
 }
 pub fn getActiveInput(self: *Self) *Input {
     return &self.inputs[self.active_field_idx];

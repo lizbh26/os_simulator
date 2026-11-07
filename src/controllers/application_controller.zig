@@ -27,7 +27,7 @@ pub fn init(self: *Self, init_p: *const std.process.Init) !void {
     const alloc = self.arena.allocator();
 
     try self.context.init(alloc, self.io);
-    try self.view.init(alloc, &self.context);
+    self.view = try .init(alloc, &self.context);
     try self.renderer.init(alloc, init_p, &self.view);
 }
 

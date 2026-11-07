@@ -26,27 +26,18 @@ alloc: Allocator,
 inputList: Input.InputList,
 config: InitContext,
 
-pub fn init(self: *Self, alloc: Allocator, config: InitContext) !void {
-    self.* = .{
+pub fn init(alloc: Allocator, config: InitContext) !Self {
+    var self = Self{
         .alloc = alloc,
         .inputList = undefined,
         .config = config,
     };
     try self.inputList.init(.{ .alloc = self.alloc, .inputs = &inputs });
     try self.inputList.title.changeText("Ingresa los parámetros de la simulación");
+    return self;
 }
 pub fn deinit(self: *Self) void {
     self.inputList.deinit();
-}
-
-pub fn prepareContext(self: *Self) void {
-    const processCountInput = self.inputList.getInputAt(0);
-    self.config.bootstrapCtx.process_count = try std.fmt.parseInt(usize, processCountInput, 10);
-
-    const rrQuantumInput = self.inputList.getInputAt(1);
-    self.config.bootstrapCtx.quantum = try std.fmt.parseInt(usize, rrQuantumInput, 10);
-
-    self.config.bootstrapCtx.ready = true;
 }
 
 pub fn handleInput(self: *Self, key: vaxis.Key) !void {
@@ -54,5 +45,15 @@ pub fn handleInput(self: *Self, key: vaxis.Key) !void {
 }
 
 pub fn draw(self: *Self, win: Window) !void {
+    if (self.inputList.isDone()) try self.prepareContext();
     try self.inputList.draw(win);
+}
+fn prepareContext(self: *Self) !void {
+    const processCountInput = self.inputList.getInputAt(0);
+    self.config.bootstrapCtx.process_count = try std.fmt.parseInt(usize, processCountInput, 10);
+
+    const rrQuantumInput = self.inputList.getInputAt(1);
+    self.config.bootstrapCtx.quantum = try std.fmt.parseInt(usize, rrQuantumInput, 10);
+
+    self.config.bootstrapCtx.ready = true;
 }

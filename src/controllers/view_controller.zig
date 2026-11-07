@@ -12,15 +12,14 @@ ctx: *ContextController,
 bootstrapperView: Views.BootstrapperView,
 simulationView: Views.SimulationView,
 
-pub fn init(self: *Self, alloc: std.mem.Allocator, ctx: *ContextController) !void {
-    self.* = .{
+pub fn init(alloc: std.mem.Allocator, ctx: *ContextController) !Self {
+    return .{
         .alloc = alloc,
         .ctx = ctx,
 
-        .bootstrapperView = undefined,
+        .bootstrapperView = try .init(alloc, .{ .bootstrapCtx = &ctx.plannerBootstrap }),
         .simulationView = try .init(alloc, .{ .planner = &ctx.planner, .is_paused = &ctx.is_paused }),
     };
-    try self.bootstrapperView.init(alloc, .{ .bootstrapCtx = &ctx.plannerBootstrap });
 }
 pub fn deinit(self: *Self) void {
     self.bootstrapperView.deinit();
