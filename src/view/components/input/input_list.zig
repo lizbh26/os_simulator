@@ -44,10 +44,11 @@ pub fn init(self: *Self, config: InitConfig) !void {
     }
     self.getActiveInput().focus();
 }
-pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
-    for (self.inputs) |input| {
-        input.deinit(alloc);
+pub fn deinit(self: *Self) void {
+    for (self.inputs) |*input| {
+        input.deinit();
     }
+    self.title.deinit();
 }
 
 pub fn reset(self: *Self) void {

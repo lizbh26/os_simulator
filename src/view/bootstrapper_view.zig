@@ -2,7 +2,6 @@ const std = @import("std");
 const vaxis = @import("vaxis");
 
 const Allocator = std.mem.Allocator;
-const Arena = std.heap.ArenaAllocator;
 
 const Window = vaxis.Window;
 
@@ -19,25 +18,25 @@ const inputs = [_]Input.InputField.InitConfig{
 
 const Self = @This();
 
-pub const InitConfig = struct {
+pub const InitContext = struct {
     bootstrapCtx: *models.SystemPlanner.BootstrappingContext,
 };
 
-arena: Arena,
+alloc: Allocator,
 inputList: Input.InputList,
-config: InitConfig,
+config: InitContext,
 
-pub fn init(self: *Self, alloc: Allocator, config: InitConfig) !void {
+pub fn init(self: *Self, alloc: Allocator, config: InitContext) !void {
     self.* = .{
-        .arena = Arena.init(alloc),
+        .alloc = alloc,
         .inputList = undefined,
         .config = config,
     };
-    try self.inputList.init(.{ .alloc = self.arena.allocator(), .inputs = &inputs });
+    try self.inputList.init(.{ .alloc = self.alloc, .inputs = &inputs });
     try self.inputList.title.changeText("Ingresa los parámetros de la simulación");
 }
 pub fn deinit(self: *Self) void {
-    self.arena.deinit();
+    self.inputList.deinit();
 }
 
 pub fn prepareContext(self: *Self) void {

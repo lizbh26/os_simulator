@@ -51,6 +51,11 @@ pub fn init(self: *Self, alloc: std.mem.Allocator, maxLabelSize: ?u16, config: I
 
     self.errorLabel.updateStyle(.{ .fg = .{ .index = 1 } });
 }
+pub fn deinit(self: *Self) void {
+    self.input.deinit();
+    self.fieldLabel.deinit();
+    self.errorLabel.deinit();
+}
 
 pub fn reset(self: *Self) void {
     self.input.clearAndFree();
