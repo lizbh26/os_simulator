@@ -49,42 +49,72 @@ pub fn handleInput(self: *Self, key: vaxis.Key) void {
 }
 
 pub fn update(self: *Self) !void {
-    const alloc = self.arena.allocator();
+    const alloc = self.alloc;
+    const planner = self.ctx.planner;
+
     alloc.free(self.strips);
-    self.strips = try alloc.alloc(ProcessStrip, self.ctx.process_count);
+    self.strips = try alloc.alloc(ProcessStrip, planner.process_count);
 
     var strip_idx: usize = 0;
-    for (0..self.ctx.new_queue.len) |i| {
-        const p = self.ctx.new_queue.get(i) catch break;
-        try self.strips[strip_idx].init(alloc, .{ .p = p, .stage = .new, .total_ellapsed_ms = self.ctx.time_ellapsed_ms });
+    for (0..planner.new_queue.len) |i| {
+        const p = planner.new_queue.get(i) catch break;
+        try self.strips[strip_idx].init(alloc, .{
+            .p = p,
+            .stage = .new,
+            .total_ellapsed_ms = planner.total_ellapsed,
+        });
         strip_idx += 1;
     }
-    for (0..self.ctx.ready_queue.len) |i| {
-        const p = self.ctx.ready_queue.get(i) catch break;
-        try self.strips[strip_idx].init(alloc, .{ .p = p, .stage = .ready, .total_ellapsed_ms = self.ctx.time_ellapsed_ms });
+    for (0..planner.ready_queue.len) |i| {
+        const p = planner.ready_queue.get(i) catch break;
+        try self.strips[strip_idx].init(alloc, .{
+            .p = p,
+            .stage = .ready,
+            .total_ellapsed_ms = planner.total_ellapsed,
+        });
         strip_idx += 1;
     }
-    for (0..self.ctx.blocked_queue.len) |i| {
-        const bp = self.ctx.blocked_queue.get(i) catch break;
-        try self.strips[strip_idx].init(alloc, .{ .p = bp.p, .stage = .blocked, .total_ellapsed_ms = self.ctx.time_ellapsed_ms, .blocked_ms = bp.ellapsed_ms });
+    for (0..planner.blocked_queue.len) |i| {
+        const bp = planner.blocked_queue.get(i) catch break;
+        try self.strips[strip_idx].init(alloc, .{
+            .p = bp.p,
+            .stage = .blocked,
+            .total_ellapsed_ms = planner.total_ellapsed,
+            .blocked_ms = bp.ellapsed_ms,
+        });
         strip_idx += 1;
     }
 
-    if (self.ctx.current_process) |curr| {
-        try self.strips[strip_idx].init(alloc, .{ .p = curr, .stage = .executing, .total_ellapsed_ms = self.ctx.time_ellapsed_ms });
+    if (planner.current_process) |curr| {
+        try self.strips[strip_idx].init(alloc, .{
+            .p = curr,
+            .stage = .executing,
+            .total_ellapsed_ms = planner.total_ellapsed,
+        });
         strip_idx += 1;
     }
 
-    for (0..self.ctx.finished_queue.len) |i| {
-        const p = self.ctx.finished_queue.get(i) catch break;
-        try self.strips[strip_idx].init(alloc, .{ .p = p, .stage = .finalized, .total_ellapsed_ms = self.ctx.time_ellapsed_ms });
+    for (0..planner.finished_queue.len) |i| {
+        const p = planner.finished_queue.get(i) catch break;
+        try self.strips[strip_idx].init(alloc, .{
+            .p = p,
+            .stage = .finalized,
+            .total_ellapsed_ms = planner.total_ellapsed,
+        });
         strip_idx += 1;
     }
 }
 
 pub fn draw(self: *Self, win: Window) !void {
+    try self.update();
+
     const titleWidth = usize_to(u16, self.title.getWidth());
-    const titleChild = win.child(.{ .x_off = @divTrunc(win.width - titleWidth, 2), .y_off = 0, .width = titleWidth, .height = 1 });
+    const titleChild = win.child(.{
+        .x_off = @divTrunc(win.width - titleWidth, 2),
+        .y_off = 0,
+        .width = titleWidth,
+        .height = 1,
+    });
     self.title.draw(titleChild);
 
     const stripsContainer = win.child(.{ .y_off = 2, .height = win.height - 2 });

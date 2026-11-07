@@ -12,7 +12,7 @@ const time = @import("~").utils.time;
 
 const MAX_OP_PADDED_WIDTH = 40;
 
-const StripData = struct { p: *Process, stage: Process.ProcessStage, total_ellapsed_ms: i128, blocked_ms: ?i128 = null };
+const StripData = struct { p: *Process, stage: Process.ProcessStage, total_ellapsed_ms: *const i128, blocked_ms: ?i128 = null };
 
 const Self = @This();
 
@@ -22,8 +22,8 @@ idLabel: Label,
 opLabel: Label,
 timeLabel: Label,
 
-pub fn init(self: *Self, alloc: Allocator, data: StripData) !Self {
-    self = .{
+pub fn init(self: *Self, alloc: Allocator, data: StripData) !void {
+    self.* = .{
         .alloc = alloc,
         .idLabel = .init(alloc),
         .opLabel = .init(alloc),
@@ -38,35 +38,93 @@ pub fn deinit(self: *Self) void {
 }
 
 fn update(self: *Self, data: StripData) !void {
-    const alloc = self.arena.allocator();
+    const alloc = self.alloc;
 
     const p = data.p;
     const stage = data.stage;
-    const total_ellapsed_ms = data.total_ellapsed_ms;
+    const total_ellapsed_ms = data.total_ellapsed_ms.*;
 
-    try self.idLabel.changeText(try alloc.print("ID: {s}    {s}  ", .{ p.id, Process.processStageToString(stage) }));
-    try self.opLabel.changeText(try alloc.print("  OP: {s}  ", .{try p.operation.toString(alloc, stage == .finalized)}));
+    try self.idLabel.changeText(
+        try alloc.print(
+            "ID: {s}    {s}  ",
+            .{
+                p.id,
+                Process.processStageToString(stage),
+            },
+        ),
+    );
+    try self.opLabel.changeText(
+        try alloc.print(
+            "  OP: {s}  ",
+            .{
+                try p.operation.toString(
+                    alloc,
+                    stage == .finalized,
+                ),
+            },
+        ),
+    );
 
-    const arrival_time = if (stage == .new) "N/A" else try time.time_to_string(alloc, time.milliseconds_to_time(p.arrival_time_ms));
-    const response_time = if (p.response_time_ms) |rt| try time.time_to_string(alloc, time.milliseconds_to_time(rt)) else "N/A";
-    const service_time = if (stage == .new) "N/A" else try time.time_to_string(alloc, time.milliseconds_to_time(p.service_time_ms));
+    const arrival_time = if (stage == .new) "N/A" else try time.time_to_string(
+        alloc,
+        time.milliseconds_to_time(p.arrival_time_ms),
+    );
+    const response_time = if (p.response_time_ms) |rt| try time.time_to_string(
+        alloc,
+        time.milliseconds_to_time(rt),
+    ) else "N/A";
+    const service_time = if (stage == .new) "N/A" else try time.time_to_string(
+        alloc,
+        time.milliseconds_to_time(p.service_time_ms),
+    );
 
     const return_time_ms = p.getReturnTimeMs() catch -1;
-    const return_time = if (return_time_ms < 0) "N/A" else try time.time_to_string(alloc, time.milliseconds_to_time(return_time_ms));
+    const return_time = if (return_time_ms < 0) "N/A" else try time.time_to_string(
+        alloc,
+        time.milliseconds_to_time(return_time_ms),
+    );
 
     const wait_time_ms = if (stage == .new) -1 else p.getWaitTimeMs(total_ellapsed_ms);
-    const wait_time = if (wait_time_ms < 0) "N/A" else try time.time_to_string(alloc, time.milliseconds_to_time(wait_time_ms));
+    const wait_time = if (wait_time_ms < 0) "N/A" else try time.time_to_string(
+        alloc,
+        time.milliseconds_to_time(wait_time_ms),
+    );
 
-    const finalization_time = if (p.finalization_time_ms < 0) "N/A" else try time.time_to_string(alloc, time.milliseconds_to_time(p.finalization_time_ms));
+    const finalization_time = if (p.finalization_time_ms < 0) "N/A" else try time.time_to_string(
+        alloc,
+        time.milliseconds_to_time(p.finalization_time_ms),
+    );
 
-    var time_str = try alloc.print("  T.Lle: {s}  T.Fin: {s}  T.Res: {s}  T.Ser: {s}  T.Esp: {s}  T.Ret: {s}  ", .{ arrival_time, finalization_time, response_time, service_time, wait_time, return_time });
+    var time_str = try alloc.print(
+        "  T.Lle: {s}  T.Fin: {s}  T.Res: {s}  T.Ser: {s}  T.Esp: {s}  T.Ret: {s}  ",
+        .{
+            arrival_time,
+            finalization_time,
+            response_time,
+            service_time,
+            wait_time,
+            return_time,
+        },
+    );
 
     if (data.blocked_ms) |blocked| {
-        const blocked_time = try time.time_to_string(alloc, time.milliseconds_to_time(blocked));
-        time_str = try alloc.print("{s}T.Bloqueado: {s}  ", .{ time_str, blocked_time });
+        const blocked_time = try time.time_to_string(
+            alloc,
+            time.milliseconds_to_time(blocked),
+        );
+        time_str = try alloc.print(
+            "{s}T.Bloqueado: {s}  ",
+            .{ time_str, blocked_time },
+        );
     } else if (stage != .finalized and stage != .new) {
-        const remaining_time = try time.time_to_string(alloc, time.milliseconds_to_time(p.estimated_time_ms - p.service_time_ms));
-        time_str = try alloc.print("{s}T.Restante: {s}  ", .{ time_str, remaining_time });
+        const remaining_time = try time.time_to_string(
+            alloc,
+            time.milliseconds_to_time(p.estimated_time_ms - p.service_time_ms),
+        );
+        time_str = try alloc.print(
+            "{s}T.Restante: {s}  ",
+            .{ time_str, remaining_time },
+        );
     }
 
     try self.timeLabel.changeText(time_str);
