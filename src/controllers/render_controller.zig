@@ -1,8 +1,7 @@
 const std = @import("std");
 const vaxis = @import("vaxis");
 
-const ContextController = @import("context_controller.zig");
-const Views = @import("../view/index.zig");
+const ViewController = @import("view_controller.zig");
 
 const Self = @This();
 
@@ -18,15 +17,9 @@ tty: vaxis.Tty,
 vx: vaxis.Vaxis,
 loop: vaxis.Loop(Event),
 
-context: *ContextController,
-bootstrapperView: Views.BootstrapperView,
+view_c: *ViewController,
 
-pub fn init(
-    self: *Self,
-    alloc: std.mem.Allocator,
-    init_p: *const std.process.Init,
-    ctx: *ContextController,
-) !void {
+pub fn init(self: *Self, alloc: std.mem.Allocator, init_p: *const std.process.Init, view_c: *ViewController) !void {
     self.* = .{
         .alloc = alloc,
 
@@ -35,8 +28,7 @@ pub fn init(
         .vx = undefined,
         .loop = undefined,
 
-        .context = ctx,
-        .bootstrapperView = undefined,
+        .view_c = view_c,
     };
     self.tty = try vaxis.Tty.init(init_p.io, &self.buffer);
     errdefer self.tty.deinit();
@@ -45,11 +37,8 @@ pub fn init(
     errdefer self.vx.deinit(alloc, self.tty.writer());
 
     self.loop = .init(init_p.io, &self.tty, &self.vx);
-
-    try self.bootstrapperView.init(alloc, .{ .bootstrapCtx = &ctx.plannerBootstrap });
 }
 pub fn deinit(self: *Self) void {
-    self.bootstrapperView.deinit();
     self.vx.deinit(self.alloc, self.tty.writer());
     self.tty.deinit();
 }
@@ -82,7 +71,7 @@ pub fn handleEvents(self: *Self) !bool {
                 } else if (key.matches('l', .{ .ctrl = true })) {
                     self.vx.queueRefresh();
                 } else {
-                    try self.handleKey(key);
+                    try self.view_c.handleKey(key);
                 }
             },
 
@@ -96,13 +85,6 @@ pub fn handleEvents(self: *Self) !bool {
 
     return false;
 }
-fn handleKey(self: *Self, key: vaxis.Key) !void {
-    switch (self.context.phase) {
-        .input => try self.bootstrapperView.handleInput(key),
-        .simulation => {},
-    }
-}
-
 pub fn draw(self: *Self) !void {
     // vx.window() returns the root window. This window is the size of the
     // terminal and can spawn child windows as logical areas. Child windows
@@ -116,10 +98,7 @@ pub fn draw(self: *Self) !void {
 
     if (win.width < MIN_SCREEN_WIDTH or win.height < MIN_SCREEN_HEIGHT) return error.TerminalSize;
 
-    try switch (self.context.phase) {
-        .input => self.bootstrapperView.draw(win),
-        .simulation => {},
-    };
+    try self.view_c.draw(win);
 
     try self.vx.render(self.tty.writer());
     try self.tty.writer().flush();

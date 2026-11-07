@@ -33,7 +33,7 @@ pub fn draw(self: *Self, win: Window) !void {
     try self.label.changeText(
         try time.time_to_string(
             self.alloc,
-            time.milliseconds_to_time(self.ellapsed_ms),
+            time.milliseconds_to_time(self.ellapsed_ms.*),
         ),
     );
     self.label.draw(win);

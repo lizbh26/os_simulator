@@ -50,7 +50,7 @@ pub fn calculate(self: *Self) void {
     };
 }
 
-pub fn toString(self: *Self, alloc: std.mem.Allocator, displayResult: bool) ![]const u8 {
+pub fn toString(self: Self, alloc: std.mem.Allocator, displayResult: bool) ![]const u8 {
     const operand: u8 =
         switch (self.operand) {
             .sum => '+',

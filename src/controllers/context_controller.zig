@@ -10,9 +10,10 @@ randomSource: std.Random.IoSource,
 
 prev_tick: ?zeit.Instant,
 time_ellapsed_ms: i128,
+
 is_paused: bool,
 
-phase: enum { input, simulation },
+phase: enum { input, simulation, overview },
 
 planner: SystemPlanner,
 plannerBootstrap: SystemPlanner.BootstrappingContext,
@@ -24,6 +25,7 @@ pub fn init(self: *Self, alloc: std.mem.Allocator, io: std.Io) !void {
 
         .prev_tick = null,
         .time_ellapsed_ms = 0,
+
         .is_paused = false,
 
         .planner = undefined,
@@ -50,15 +52,19 @@ pub fn tick(self: *Self, now: zeit.Instant) !void {
 
         self.time_ellapsed_ms += delta_ms;
 
-        try switch (self.phase) {
+        switch (self.phase) {
             .input => {
                 if (self.plannerBootstrap.ready) {
                     try self.planner.bootstrap(self.plannerBootstrap);
                     self.phase = .simulation;
                 }
             },
-            .simulation => self.planner.tick(delta_ms),
-        };
+            .simulation => {
+                try self.planner.tick(delta_ms);
+                if (self.planner.isComplete()) self.phase = .overview;
+            },
+            .overview => {},
+        }
     }
 
     self.prev_tick = now;

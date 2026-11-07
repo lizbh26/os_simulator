@@ -3,14 +3,18 @@ const zeit = @import("zeit");
 
 const ContextController = @import("context_controller.zig");
 const RenderController = @import("render_controller.zig");
+const ViewController = @import("view_controller.zig");
+
 const Self = @This();
 
 const FRAME_DURATION: zeit.Duration = .{ .microseconds = 16667 }; // 60 FPS
 
 arena: *std.heap.ArenaAllocator,
 io: std.Io,
+
 context: ContextController,
 renderer: RenderController,
+view: ViewController,
 
 pub fn init(self: *Self, init_p: *const std.process.Init) !void {
     self.* = .{
@@ -18,15 +22,18 @@ pub fn init(self: *Self, init_p: *const std.process.Init) !void {
         .io = init_p.io,
         .context = undefined,
         .renderer = undefined,
+        .view = undefined,
     };
     const alloc = self.arena.allocator();
 
     try self.context.init(alloc, self.io);
-    try self.renderer.init(alloc, init_p, &self.context);
+    try self.view.init(alloc, &self.context);
+    try self.renderer.init(alloc, init_p, &self.view);
 }
 
 pub fn deinit(self: *Self) void {
     self.renderer.deinit();
+    self.view.deinit();
     self.context.deinit();
     self.arena.deinit();
 }

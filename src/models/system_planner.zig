@@ -3,7 +3,7 @@ const std = @import("std");
 const Process = @import("process.zig");
 const Queue = @import("queue.zig").Queue;
 
-const MAX_PROCESSES_IN_MEMORY = 5;
+pub const MAX_PROCESSES_IN_MEMORY = 5;
 
 const Self = @This();
 
@@ -181,7 +181,7 @@ fn releaseCurrentProcess(self: *Self) !void {
     self.current_process = null;
 }
 
-pub fn getCurrentProcess(self: Self) *const Process.Process {
+pub fn getCurrentProcess(self: Self) *const Process {
     return self.current_process orelse &Process.NULL_PROCESS;
 }
 pub fn isComplete(self: Self) bool {

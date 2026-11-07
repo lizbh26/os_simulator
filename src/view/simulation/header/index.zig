@@ -14,33 +14,42 @@ const Self = @This();
 
 pub const InitContext = struct {
     ellapsed: *const i128,
-    pendingProcesses: *const i128,
-    quantum: *const i128,
+    pendingProcesses: *const usize,
+    quantum: *const usize,
 };
 
 alloc: Allocator,
 
 quantumLabel: Label,
-pendingProcessesLabel: Label,
 timerWidget: TimerWidget,
 
-pendingProcesses: *const i128,
+pendingProcesses: *const usize,
+pendingProcessesLabel: Label,
 
-pub fn init(self: *Self, alloc: Allocator, ctx: *InitContext) !void {
-    self = .{
+pub fn init(alloc: Allocator, ctx: InitContext) !Self {
+    var self = Self{
         .alloc = alloc,
-        .quantumLabel = .init(alloc, ctx.ellapsed),
-        .pendingProcessesLabel = .init(alloc),
-        .timerWidget = .init(alloc),
+
+        .quantumLabel = .init(alloc),
+        .timerWidget = .init(alloc, ctx.ellapsed),
+
         .pendingProcesses = ctx.pendingProcesses,
+        .pendingProcessesLabel = .init(alloc),
     };
 
     try self.quantumLabel.changeText(
-        try self.alloc.print(
+        try alloc.print(
             "Quantum: {d}",
             .{ctx.quantum.*},
         ),
     );
+
+    return self;
+}
+pub fn deinit(self: *Self) void {
+    self.quantumLabel.deinit();
+    self.pendingProcessesLabel.deinit();
+    self.timerWidget.deinit();
 }
 
 pub fn draw(self: *Self, win: Window) !void {
