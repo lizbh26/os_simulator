@@ -12,15 +12,21 @@ OS Simulator lets you create and observe simulated processes as they move throug
   - Ready processes
   - Blocked processes
   - Finished processes
+- Round-robin scheduling with a configurable quantum
+- Up to five processes in memory at once
 - Process state tracking
+- Full-width process overview with colors for each state
+- Pause, resume, block, fail, and create processes during execution
 - Simulated process execution times
 - Basic arithmetic operations assigned to processes.
 - Process timing metrics, including:
   - Arrival time
+  - Finalization time
   - Response time
   - Service time
   - Return time
   - Waiting time
+  - Remaining execution time or elapsed blocked time
 - Live processor and queue visualization
 - Keyboard-driven controls
 - Terminal resize handling
@@ -28,7 +34,7 @@ OS Simulator lets you create and observe simulated processes as they move throug
 
 ## Requirements
 
-- [Zig](https://ziglang.org/) `0.16.0` or newer
+- [Zig](https://ziglang.org/) `0.17.0` or newer
 - A terminal emulator with support for an alternate screen and ANSI terminal controls
 - A terminal size of at least 125 columns × 30 rows
 
@@ -84,41 +90,43 @@ zig build test
 
 ## How It Works
 
-The application is divided into two main phases.
+The program has three phases: setup, simulation, and system overview.
 
-### 1. Input Phase
+### 1. Setup
 
-The input phase allows you to configure the batch of processes that will be simulated.
+Enter the initial number of processes and the round-robin quantum in seconds. Both fields accept positive integers from 1 to 99. Press `Enter` to confirm each field and start the simulation.
 
-Processes contain:
+Processes are generated automatically with unique identifiers, random arithmetic operations, and estimated execution times from 5 to 20 seconds. Operation operands range from -9999 to 9999; generated division and remainder operations avoid a zero divisor.
 
-- A unique identifier
-- An arithmetic operation
-- An estimated execution time
-- Timing information used for simulation statistics
+### 2. Simulation
 
-### 2. Processor Phase
+The simulation displays ready and blocked processes, the executing process, and finished processes in three panels. The header shows the configured quantum, elapsed simulation time, and number of new processes awaiting admission.
 
-After the batch is configured, the application switches to the processor view. Processes are moved through the simulated execution context and displayed according to their current state.
-
-The processor manages several queues:
+The scheduler admits up to five processes into memory, counting ready, executing, and blocked processes. Additional processes remain in the new queue until a process finishes. Round-robin scheduling returns the executing process to the ready queue when its quantum expires.
 
 ```mermaid
-stateDiagram
+stateDiagram-v2
     [*] --> New
     New --> Ready
     Ready --> Executing
-    Executing --> Blocked
-    Blocked --> Ready
-    Executing --> Finished
+    Executing --> Ready: Quantum expires
+    Executing --> Blocked: e
+    Blocked --> Ready: After 8 seconds
+    Executing --> Finished: Completes or fails
     Finished --> [*]
 ```
 
-Each process can be completed normally or moved between states based on the processor simulation.
+A blocked process returns to the ready queue after approximately eight seconds of simulation time. Normal completion calculates the operation result; failing a process finishes it with an `ERROR` result.
+
+### 3. Process Overview
+
+Press `b` during execution to pause the simulation and open the process overview (the PCB or Process Control Block) table. Press `c` to resume. The overview also opens automatically when all processes have finished. Each process strip spans the terminal width and shows its identifier, state, operation, and timing metrics. 
+
+Unavailable timing values appear as `N/A`. Finished operations show their result or `ERROR`.
 
 ## Process Operations
 
-Supported arithmetic operations include:
+Generated processes use the following arithmetic operations. The operation parser also accepts the listed alternate symbols:
 
 | Operation | Symbols |
 |-----------|---------|
@@ -138,18 +146,27 @@ Examples:
 17 % 5
 ```
 
-Division by zero and invalid expressions are rejected during parsing.
+The parser rejects division by zero and invalid expressions. The setup interface configures process count and quantum; operations are generated automatically.
 
 ## Keyboard Controls
 
-The application uses keyboard input to navigate and control the simulation.
+Simulation shortcuts use lowercase letters.
 
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+C` | Exit the application |
 | `Ctrl+L` | Refresh the terminal display |
+| `Enter` | Confirm the current setup field |
+| `Backspace` | Delete input; return to the previous field when the current field is empty |
+| `p` | Pause the simulation |
+| `c` | Resume a paused simulation or return from the overview |
+| `e` | Block the executing process |
+| `w` | Finish the executing process with an error |
+| `n` | Generate and enqueue a new process |
+| `b` | Pause and open the process overview |
+| `↑` / `↓` | Scroll finished processes in the panels, or processes in the overview while the simulation is incomplete |
 
-Additional controls may be available depending on the active input or processor view.
+Blocking, failing, adding processes, and opening the overview are available while the simulation is running. Once the simulation finishes, the final overview remains displayed until exit.
 
 ## Project Structure
 
@@ -161,61 +178,49 @@ Additional controls may be available depending on the active input or processor 
     ├── controllers
     │   ├── application_controller.zig
     │   ├── context_controller.zig
-    │   └── render_controller.zig
+    │   ├── render_controller.zig
+    │   └── view_controller.zig
     ├── main.zig
     ├── root.zig
     ├── models
     │   ├── operation.zig
     │   ├── process.zig
-    │   └── queue.zig
+    │   ├── queue.zig
+    │   └── system_planner.zig
     ├── utils
     │   ├── count_utf8.zig
     │   ├── leftpad.zig
     │   ├── time.zig
     │   └── usize_to_smaller.zig
     └── view
-        ├── main_orchestrator.zig
-        ├── input
-        └── processor
+        ├── index.zig
+        ├── bootstrapper_view.zig
+        ├── components
+        │   ├── label.zig
+        │   └── input
+        └── simulation
+            ├── simulation_view.zig
+            ├── sim_context.zig
+            ├── footer.zig
+            ├── header
+            ├── panels
+            └── overview
 ```
 
 ### Core Components
 
 - `controllers/application_controller.zig` owns application initialization, cleanup, and frame timing.
-- `controllers/context_controller.zig` manages the execution context and simulation ticks.
+- `controllers/context_controller.zig` manages simulation phases, bootstrapping, and simulation ticks.
+- `controllers/view_controller.zig` routes input and selects the setup, simulation, or overview view.
 - `controllers/render_controller.zig` manages the terminal, input events, resize handling, and rendering.
 - `models/process.zig` defines process state and timing metrics.
-- `models/operation.zig` defines arithmetic operations and expression parsing.
+- `models/operation.zig` generates, calculates, formats, and parses arithmetic operations.
+- `models/system_planner.zig` manages round-robin scheduling, memory admission, process queues, and simulation time.
 - `models/queue.zig` provides a generic doubly linked queue.
-- `view/input` contains the process configuration interface.
-- `view/processor` contains the process execution and monitoring interface.
+- `view/bootstrapper_view.zig` configures the initial process count and quantum.
+- `view/components` contains shared labels and input widgets.
+- `view/simulation` contains the execution panels, header, footer, and process overview.
 - `utils` contains shared helper functions.
-
-## Development Commands
-
-Display available build commands and options:
-
-```bash
-zig build --help
-```
-
-Build with a specific optimization mode:
-
-```bash
-zig build -Doptimize=ReleaseFast
-```
-
-Build for a specific target:
-
-```bash
-zig build -Dtarget=<target>
-```
-
-Run with application arguments:
-
-```bash
-zig build run -- <arguments>
-```
 
 ## License
 
