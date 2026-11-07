@@ -21,30 +21,21 @@ pub const InitContext = struct {
 alloc: Allocator,
 
 quantumLabel: Label,
+pendingProcessesLabel: Label,
 timerWidget: TimerWidget,
 
-pendingProcesses: *const usize,
-pendingProcessesLabel: Label,
+ctx: InitContext,
 
 pub fn init(alloc: Allocator, ctx: InitContext) !Self {
-    var self = Self{
+    return .{
         .alloc = alloc,
 
         .quantumLabel = .init(alloc),
+        .pendingProcessesLabel = .init(alloc),
         .timerWidget = .init(alloc, ctx.ellapsed),
 
-        .pendingProcesses = ctx.pendingProcesses,
-        .pendingProcessesLabel = .init(alloc),
+        .ctx = ctx,
     };
-
-    try self.quantumLabel.changeText(
-        try alloc.print(
-            "Quantum: {d}",
-            .{ctx.quantum.*},
-        ),
-    );
-
-    return self;
 }
 pub fn deinit(self: *Self) void {
     self.quantumLabel.deinit();
@@ -53,22 +44,45 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn draw(self: *Self, win: Window) !void {
+    try self.updateQuantumLabel();
     const quantumLabelWidth = usize_to(u16, self.quantumLabel.getWidth());
-    const quantumLabelChild = win.child(.{ .x_off = 1, .width = quantumLabelWidth, .height = 1 });
+    const quantumLabelChild = win.child(.{
+        .x_off = 1,
+        .width = quantumLabelWidth,
+        .height = 1,
+    });
     self.quantumLabel.draw(quantumLabelChild);
 
     try self.updatePendingProcessesLabel();
     const titleWidth = usize_to(u16, self.pendingProcessesLabel.getWidth());
-    const titleChild = win.child(.{ .x_off = @divTrunc(win.width - titleWidth, 2), .y_off = 0, .width = titleWidth, .height = 1 });
+    const titleChild = win.child(.{
+        .x_off = @divTrunc(win.width - titleWidth, 2),
+        .y_off = 0,
+        .width = titleWidth,
+        .height = 1,
+    });
     self.pendingProcessesLabel.draw(titleChild);
 
     const timerWidth = self.timerWidget.getWidth();
-    const timerChild = win.child(.{ .x_off = win.width - timerWidth - 2, .y_off = 0, .width = timerWidth, .height = 1 });
+    const timerChild = win.child(.{
+        .x_off = win.width - timerWidth - 2,
+        .y_off = 0,
+        .width = timerWidth,
+        .height = 1,
+    });
     try self.timerWidget.draw(timerChild);
 }
 
+fn updateQuantumLabel(self: *Self) !void {
+    try self.quantumLabel.changeText(
+        try self.alloc.print(
+            "Quantum: {d}",
+            .{self.ctx.quantum.*},
+        ),
+    );
+}
 fn updatePendingProcessesLabel(self: *Self) !void {
-    const p = self.pendingProcesses.*;
+    const p = self.ctx.pendingProcesses.*;
     const plural_S = if (p == 1) "" else "s";
 
     try self.pendingProcessesLabel.changeText(
