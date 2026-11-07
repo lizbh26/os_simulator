@@ -12,7 +12,7 @@ const time = @import("~").utils.time;
 
 const MAX_OP_PADDED_WIDTH = 40;
 
-const StripData = struct { p: *Process, stage: Process.ProcessStage, total_ellapsed_ms: *const i128, blocked_ms: ?i128 = null };
+const StripConfig = struct { p: *Process, stage: Process.ProcessStage, total_ellapsed_ms: i128, blocked_ms: ?i128 = null };
 
 const Self = @This();
 
@@ -23,12 +23,12 @@ idLabel: Label,
 opLabel: Label,
 timeLabel: Label,
 
-pub fn init(self: *Self, alloc: Allocator, data: StripData) !void {
+pub fn init(self: *Self, alloc: Allocator, config: StripConfig) !void {
     self.* = .{
         .alloc = alloc,
         .style = .{
             .fg = .{
-                .index = switch (data.stage) {
+                .index = switch (config.stage) {
                     .new => 250,
                     .ready => 12,
                     .executing => 10,
@@ -41,7 +41,7 @@ pub fn init(self: *Self, alloc: Allocator, data: StripData) !void {
         .opLabel = .init(alloc),
         .timeLabel = .init(alloc),
     };
-    try self.update(data);
+    try self.update(config);
 }
 pub fn deinit(self: *Self) void {
     self.idLabel.deinit();
@@ -49,12 +49,12 @@ pub fn deinit(self: *Self) void {
     self.timeLabel.deinit();
 }
 
-fn update(self: *Self, data: StripData) !void {
+fn update(self: *Self, config: StripConfig) !void {
     const alloc = self.alloc;
 
-    const p = data.p;
-    const stage = data.stage;
-    const total_ellapsed_ms = data.total_ellapsed_ms.*;
+    const p = config.p;
+    const stage = config.stage;
+    const total_ellapsed_ms = config.total_ellapsed_ms;
 
     try self.idLabel.changeText(
         try alloc.print(
@@ -119,7 +119,7 @@ fn update(self: *Self, data: StripData) !void {
         },
     );
 
-    if (data.blocked_ms) |blocked| {
+    if (config.blocked_ms) |blocked| {
         const blocked_time = try time.time_to_string(
             alloc,
             time.milliseconds_to_time(blocked),

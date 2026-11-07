@@ -7,10 +7,6 @@ pub const MAX_PROCESSES_IN_MEMORY = 5;
 
 const Self = @This();
 
-const InitContext = struct {
-    random: std.Random,
-    total_ellapsed: *const i128,
-};
 pub const BootstrappingContext = struct {
     ready: bool,
     process_count: usize,
@@ -37,17 +33,18 @@ current_process: ?*Process,
 blocked_queue: Queue(Process.BlockedProcess),
 finished_queue: Queue(Process),
 
-total_ellapsed: *const i128,
+total_ellapsed: i128,
 current_quantum_ms: i128,
 
+is_paused: bool,
+
 pub fn init(
-    self: *Self,
     alloc: std.mem.Allocator,
-    ctx: InitContext,
-) !void {
-    self.* = .{
+    random: std.Random,
+) !Self {
+    return .{
         .alloc = alloc,
-        .random = ctx.random,
+        .random = random,
 
         .process_count = 0,
         .quantum = 0,
@@ -58,8 +55,10 @@ pub fn init(
         .blocked_queue = try .init(alloc),
         .finished_queue = try .init(alloc),
 
-        .total_ellapsed = ctx.total_ellapsed,
+        .total_ellapsed = 0,
         .current_quantum_ms = 0,
+
+        .is_paused = false,
     };
 }
 pub fn deinit(self: *Self) void {
@@ -93,11 +92,19 @@ fn getProcessesInMemory(self: *Self) !usize {
 }
 
 pub fn tick(self: *Self, delta_ms: i128) !void {
-    if (self.isComplete()) return;
+    if (self.isComplete() or self.is_paused) return;
+
+    self.total_ellapsed += delta_ms;
 
     try self.tickBlockedProcesses(delta_ms);
     try self.tickCurrentQuantum(delta_ms);
     try self.executeCurrentProcess(delta_ms);
+}
+pub fn pause(self: *Self) void {
+    self.is_paused = true;
+}
+pub fn unpause(self: *Self) void {
+    self.is_paused = false;
 }
 
 fn tickBlockedProcesses(self: *Self, delta_ms: i128) !void {
@@ -121,7 +128,7 @@ fn executeCurrentProcess(self: *Self, delta_ms: i128) !void {
     const p = self.current_process orelse return;
 
     if (p.response_time_ms == null)
-        p.response_time_ms = self.total_ellapsed.* - p.arrival_time_ms
+        p.response_time_ms = self.total_ellapsed - p.arrival_time_ms
     else
         p.service_time_ms += delta_ms;
 
@@ -143,7 +150,7 @@ fn releaseDispatchAndAdmit(self: *Self) !void {
 fn admitNewProcess(self: *Self) !void {
     const p = self.new_queue.dequeue() catch return;
     try self.ready_queue.enqueue(p);
-    p.arrival_time_ms = self.total_ellapsed.*;
+    p.arrival_time_ms = self.total_ellapsed;
 }
 // READY -> RUNNING
 fn dispatchReadyProcess(self: *Self) void {
@@ -176,7 +183,7 @@ fn unblockProcess(self: *Self, bp: *Process.BlockedProcess) !void {
 // RUNNING -> DONE
 fn releaseCurrentProcess(self: *Self) !void {
     const p = self.current_process orelse return;
-    p.finalization_time_ms = self.total_ellapsed.*;
+    p.finalization_time_ms = self.total_ellapsed;
     try self.finished_queue.enqueue(p);
     self.current_process = null;
 }

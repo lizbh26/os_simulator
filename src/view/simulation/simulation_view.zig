@@ -30,7 +30,7 @@ pub fn init(alloc: Allocator, ctx: Context) !Self {
         .alloc = alloc,
 
         .header = try .init(alloc, .{
-            .ellapsed = ctx.planner.total_ellapsed,
+            .ellapsed = &ctx.planner.total_ellapsed,
             .pendingProcesses = &ctx.planner.new_queue.len,
             .quantum = &ctx.planner.quantum,
         }),

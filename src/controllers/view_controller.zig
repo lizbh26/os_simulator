@@ -18,7 +18,7 @@ pub fn init(alloc: std.mem.Allocator, ctx: *ContextController) !Self {
         .ctx = ctx,
 
         .bootstrapperView = try .init(alloc, .{ .bootstrapCtx = &ctx.plannerBootstrap }),
-        .simulationView = try .init(alloc, .{ .planner = &ctx.planner, .is_paused = &ctx.is_paused }),
+        .simulationView = try .init(alloc, .{ .planner = &ctx.planner }),
     };
 }
 pub fn deinit(self: *Self) void {

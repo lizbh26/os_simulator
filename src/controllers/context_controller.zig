@@ -9,9 +9,6 @@ alloc: std.mem.Allocator,
 randomSource: std.Random.IoSource,
 
 prev_tick: ?zeit.Instant,
-time_ellapsed_ms: i128,
-
-is_paused: bool,
 
 phase: enum { input, simulation, overview },
 
@@ -24,28 +21,18 @@ pub fn init(self: *Self, alloc: std.mem.Allocator, io: std.Io) !void {
         .randomSource = .{ .io = io },
 
         .prev_tick = null,
-        .time_ellapsed_ms = 0,
 
-        .is_paused = false,
-
-        .planner = undefined,
+        .planner = try .init(alloc, self.randomSource.interface()),
         .plannerBootstrap = .init(),
 
         .phase = .input,
     };
-
-    try self.planner.init(alloc, .{
-        .random = self.randomSource.interface(),
-        .total_ellapsed = &self.time_ellapsed_ms,
-    });
 }
 pub fn deinit(self: *Self) void {
     self.planner.deinit();
 }
 
 pub fn tick(self: *Self, now: zeit.Instant) !void {
-    if (self.is_paused) return;
-
     if (self.prev_tick) |prev| {
         const delta_nano = now.timestamp - prev.timestamp;
         const delta_ms = zeit.instant(.{ .unix_nano = delta_nano }, &zeit.utc).milliTimestamp();
@@ -62,13 +49,10 @@ pub fn tick(self: *Self, now: zeit.Instant) !void {
                 if (self.planner.isComplete()) {
                     self.phase = .overview;
                     self.pause();
-                    return;
                 }
             },
             .overview => {},
         }
-
-        self.time_ellapsed_ms += delta_ms;
     }
 
     self.prev_tick = now;
@@ -76,9 +60,13 @@ pub fn tick(self: *Self, now: zeit.Instant) !void {
 
 pub fn pause(self: *Self) void {
     self.prev_tick = null;
-    self.is_paused = true;
+    self.planner.pause();
 }
 
 pub fn unpause(self: *Self) void {
-    self.is_paused = false;
+    self.planner.unpause();
+}
+
+pub fn isComplete(self: *Self) void {
+    return self.planner.isComplete();
 }
