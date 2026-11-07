@@ -26,41 +26,47 @@ pub fn deinit(self: *Self) void {
     self.simulationView.deinit();
 }
 
-pub fn handleKey(self: *Self, key: vaxis.Key) !void {
+pub fn handleInput(self: *Self, key: vaxis.Key) !void {
     switch (self.ctx.phase) {
         .input => try self.bootstrapperView.handleInput(key),
         .simulation => {
-            if (self.ctx.planner.isComplete()) return;
-
-            if (self.ctx.is_paused) {
-                if (key.matches('c', .{})) {
-                    self.ctx.unpause();
-                }
-            } else {
-                var planner = &self.ctx.planner;
-                if (key.matches('p', .{})) {
-                    self.ctx.pause();
-                } else if (key.matches('b', .{})) {
-                    self.ctx.phase = .overview;
-                    self.ctx.pause();
-                } else if (key.matches('e', .{})) {
-                    try planner.blockCurrentProcess();
-                } else if (key.matches('w', .{})) {
-                    try planner.failCurrentProcess();
-                } else if (key.matches('n', .{})) {
-                    try planner.createProcess();
-                }
-            }
+            if (try self.handleSimulationKeys(key)) return;
+            try self.simulationView.handleInput(key);
         },
         .overview => {
             if (self.ctx.planner.isComplete()) return;
 
             if (key.matches('c', .{})) {
                 self.ctx.phase = .simulation;
-                self.ctx.unpause();
-            }
+                self.ctx.planner.is_paused = false;
+            } else try self.simulationView.handleInput(key);
         },
     }
+}
+
+fn handleSimulationKeys(self: *Self, key: vaxis.Key) !bool {
+    var planner = &self.ctx.planner;
+    if (planner.isComplete()) return true;
+
+    if (planner.is_paused) {
+        if (key.matches('c', .{})) {
+            planner.is_paused = false;
+        } else return false;
+    } else {
+        if (key.matches('p', .{})) {
+            planner.is_paused = true;
+        } else if (key.matches('b', .{})) {
+            self.ctx.phase = .overview;
+            planner.is_paused = true;
+        } else if (key.matches('e', .{})) {
+            try planner.blockCurrentProcess();
+        } else if (key.matches('w', .{})) {
+            try planner.failCurrentProcess();
+        } else if (key.matches('n', .{})) {
+            try planner.createProcess();
+        } else return false;
+    }
+    return true;
 }
 
 pub fn draw(self: *Self, win: vaxis.Window) !void {

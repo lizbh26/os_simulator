@@ -18,12 +18,16 @@ const FOOTER_WIDTH = 2;
 
 const Self = @This();
 
+const MainView = enum { panels, overview };
+
 alloc: Allocator,
 
 header: Header,
 panels: Panels,
 overview: Overview,
 footer: Footer,
+
+currentView: MainView,
 
 pub fn init(alloc: Allocator, ctx: Context) !Self {
     return .{
@@ -37,6 +41,8 @@ pub fn init(alloc: Allocator, ctx: Context) !Self {
         .panels = .init(alloc, ctx),
         .overview = try .init(alloc, ctx),
         .footer = try .init(alloc, ctx),
+
+        .currentView = .panels,
     };
 }
 
@@ -48,38 +54,17 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn handleInput(self: *Self, key: vaxis.Key) !void {
-    if (!self.ctx.isComplete()) {
-        if (self.context.running) {
-            if (key.matches('e', .{})) {
-                try self.context.blockCurrentProcess();
-            } else if (key.matches('w', .{})) {
-                try self.context.failCurrentProcess();
-            } else if (key.matches('p', .{})) {
-                try self.stop();
-            } else if (key.matches('b', .{})) {
-                try self.stop();
-                try self.contextOverviewWidget.update();
-                self.view = .overview;
-            } else if (key.matches('n', .{})) {
-                try self.context.createProcess();
-                try self.completedProcessesPanel.ensureSufficientCards();
-            }
-        } else if (key.matches('c', .{})) {
-            try self.restart();
-            self.view = .panels;
-        }
-    }
-    if (self.view == .panels) {
-        self.completedProcessesPanel.handleInput(key);
-    } else if (self.view == .overview) {
-        self.contextOverviewWidget.handleInput(key);
+    switch (self.currentView) {
+        .panels => self.panels.handleInput(key),
+        .overview => self.overview.handleInput(key),
     }
 }
 
-const MainView = enum { panels, overview };
 pub fn draw(self: *Self, win: Window, view: MainView) !void {
+    self.currentView = view;
+
     try self.drawHeader(win);
-    try self.drawMainBody(win, view);
+    try self.drawMainBody(win);
     try self.drawFooter(win);
 }
 
@@ -97,7 +82,7 @@ fn drawHeader(self: *Self, win: Window) !void {
     try self.header.draw(headerContainer);
 }
 
-fn drawMainBody(self: *Self, win: Window, view: MainView) !void {
+fn drawMainBody(self: *Self, win: Window) !void {
     const mainContainer = win.child(.{
         .x_off = 0,
         .y_off = HEADER_WIDTH + 1,
@@ -105,7 +90,7 @@ fn drawMainBody(self: *Self, win: Window, view: MainView) !void {
         .height = win.height - HEADER_WIDTH - 1 - FOOTER_WIDTH,
     });
 
-    switch (view) {
+    switch (self.currentView) {
         .panels => try self.panels.draw(mainContainer),
         .overview => try self.overview.draw(mainContainer),
     }

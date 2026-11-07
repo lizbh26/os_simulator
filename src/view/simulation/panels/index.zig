@@ -28,6 +28,10 @@ pub fn deinit(self: *Self) void {
     self.completedProcessesPanel.deinit();
 }
 
+pub fn handleInput(self: *Self, key: vaxis.Key) void {
+    self.completedProcessesPanel.handleInput(key);
+}
+
 pub fn draw(self: *Self, win: Window) !void {
     const panelWidth = @divFloor(win.width, 3);
 

@@ -71,7 +71,7 @@ pub fn handleEvents(self: *Self) !bool {
                 } else if (key.matches('l', .{ .ctrl = true })) {
                     self.vx.queueRefresh();
                 } else {
-                    try self.view_c.handleKey(key);
+                    try self.view_c.handleInput(key);
                 }
             },
 

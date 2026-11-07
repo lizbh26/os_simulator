@@ -48,7 +48,6 @@ pub fn tick(self: *Self, now: zeit.Instant) !void {
                 try self.planner.tick(delta_ms);
                 if (self.planner.isComplete()) {
                     self.phase = .overview;
-                    self.pause();
                 }
             },
             .overview => {},
@@ -56,17 +55,4 @@ pub fn tick(self: *Self, now: zeit.Instant) !void {
     }
 
     self.prev_tick = now;
-}
-
-pub fn pause(self: *Self) void {
-    self.prev_tick = null;
-    self.planner.pause();
-}
-
-pub fn unpause(self: *Self) void {
-    self.planner.unpause();
-}
-
-pub fn isComplete(self: *Self) void {
-    return self.planner.isComplete();
 }

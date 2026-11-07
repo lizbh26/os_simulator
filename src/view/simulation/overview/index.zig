@@ -42,7 +42,7 @@ pub fn deinit(self: *Self) void {
 
 pub fn handleInput(self: *Self, key: vaxis.Key) void {
     if (key.matches(vaxis.Key.down, .{})) {
-        if (self.ctx.process_count - self.offset > 1) self.offset += 1;
+        if (self.offset < self.ctx.planner.process_count - 1) self.offset += 1;
     } else if (key.matches(vaxis.Key.up, .{})) {
         if (self.offset > 0) self.offset -= 1;
     }
@@ -52,8 +52,10 @@ pub fn update(self: *Self) !void {
     const alloc = self.alloc;
     const planner = self.ctx.planner;
 
-    alloc.free(self.strips);
-    self.strips = try alloc.alloc(ProcessStrip, planner.process_count);
+    if (self.strips.len != planner.process_count) {
+        alloc.free(self.strips);
+        self.strips = try alloc.alloc(ProcessStrip, planner.process_count);
+    }
 
     var strip_idx: usize = 0;
     for (0..planner.new_queue.len) |i| {

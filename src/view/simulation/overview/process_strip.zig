@@ -33,7 +33,7 @@ pub fn init(self: *Self, alloc: Allocator, config: StripConfig) !void {
                     .ready => 12,
                     .executing => 10,
                     .blocked => 9,
-                    .finalized => 13,
+                    .finalized => 5,
                 },
             },
         },
