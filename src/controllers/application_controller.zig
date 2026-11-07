@@ -35,7 +35,6 @@ pub fn deinit(self: *Self) void {
     self.renderer.deinit();
     self.view.deinit();
     self.context.deinit();
-    self.arena.deinit();
 }
 
 pub fn startLoop(self: *Self) !void {
