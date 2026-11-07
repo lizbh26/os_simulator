@@ -21,7 +21,7 @@ alloc: Allocator,
 ctx: Context,
 
 ready_title: Label,
-ready_cards: [MAX_CARDS_TO_SHOW - 1]ProcessCardWidget,
+ready_cards: [MAX_CARDS_TO_SHOW]ProcessCardWidget,
 
 blocked_title: Label,
 blocked_cards: [MAX_CARDS_TO_SHOW]BlockedProcessCardWidget,

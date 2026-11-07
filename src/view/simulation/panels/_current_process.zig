@@ -37,7 +37,7 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn draw(self: *Self, win: Window) !void {
-    const titleMsg: []const u8 = if (self.ctx.planner.isComplete())
+    const titleMsg: []const u8 = if (self.ctx.isComplete())
         "Sin procesos a ejecutar"
     else
         try self.alloc.print("Proceso en ejecución: {s}", .{self.ctx.planner.getCurrentProcess().id});
@@ -45,22 +45,39 @@ pub fn draw(self: *Self, win: Window) !void {
     try self.title.changeText(titleMsg);
 
     const titleWidth = usize_to(u16, self.title.getWidth());
-    const titleChild = win.child(.{ .x_off = usize_to(i17, @divTrunc((win.width - titleWidth), 2)), .width = titleWidth, .height = 1 });
+    const titleChild = win.child(.{
+        .x_off = usize_to(i17, @divTrunc((win.width - titleWidth), 2)),
+        .width = titleWidth,
+        .height = 1,
+    });
     self.title.draw(titleChild);
 
     if (self.ctx.planner.current_process != null) {
-        const currentQuantumTime = try time.time_to_string(self.alloc, time.milliseconds_to_time(self.ctx.planner.current_quantum_ms));
+        const currentQuantumTime = try time.time_to_string(
+            self.alloc,
+            time.milliseconds_to_time(self.ctx.planner.current_quantum_ms),
+        );
         const currentQuantumMsg = try self.alloc.print("Tiempo del quantum: {s}", .{currentQuantumTime});
         try self.currentQuantumLabel.changeText(currentQuantumMsg);
 
         const quantumLabelWidth = usize_to(u16, self.currentQuantumLabel.getWidth());
-        const quantumLabelChild = win.child(.{ .x_off = usize_to(i17, @divTrunc((win.width - quantumLabelWidth), 2)), .y_off = 1, .width = quantumLabelWidth, .height = 1 });
+        const quantumLabelChild = win.child(.{
+            .x_off = usize_to(i17, @divTrunc((win.width - quantumLabelWidth), 2)),
+            .y_off = 1,
+            .width = quantumLabelWidth,
+            .height = 1,
+        });
         self.currentQuantumLabel.draw(quantumLabelChild);
     }
 
-    if (!self.ctx.planner.isComplete()) {
+    if (!self.ctx.isComplete()) {
         try self.card.updateProcess(self.ctx.planner.getCurrentProcess());
-        const cardChild = win.child(.{ .x_off = @divTrunc(win.width - ProcessCard.getWidth(win), 2), .y_off = 2, .width = win.width - 2, .height = self.card.getHeight() });
+        const cardChild = win.child(.{
+            .x_off = @divTrunc(win.width - ProcessCard.getWidth(win), 2),
+            .y_off = 2,
+            .width = win.width - 2,
+            .height = self.card.getHeight(),
+        });
         self.card.draw(cardChild);
     }
 }

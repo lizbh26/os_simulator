@@ -53,10 +53,10 @@ pub fn draw(self: *Self, win: Window) !void {
     self.scrollControls.draw(scrollControlsChild);
 }
 fn updateControls(self: *Self) !void {
-    if (self.ctx.planner.isComplete()) {
+    if (self.ctx.isComplete()) {
         try self.showCompletedControls();
-    } else if (self.ctx.is_paused.*) {
-        try self.showRunningControls();
+    } else if (self.ctx.isPaused()) {
+        try self.showPausedControls();
     } else {
         try self.showRunningControls();
     }

@@ -50,8 +50,6 @@ pub fn tick(self: *Self, now: zeit.Instant) !void {
         const delta_nano = now.timestamp - prev.timestamp;
         const delta_ms = zeit.instant(.{ .unix_nano = delta_nano }, &zeit.utc).milliTimestamp();
 
-        self.time_ellapsed_ms += delta_ms;
-
         switch (self.phase) {
             .input => {
                 if (self.plannerBootstrap.ready) {
@@ -61,11 +59,26 @@ pub fn tick(self: *Self, now: zeit.Instant) !void {
             },
             .simulation => {
                 try self.planner.tick(delta_ms);
-                if (self.planner.isComplete()) self.phase = .overview;
+                if (self.planner.isComplete()) {
+                    self.phase = .overview;
+                    self.pause();
+                    return;
+                }
             },
             .overview => {},
         }
+
+        self.time_ellapsed_ms += delta_ms;
     }
 
     self.prev_tick = now;
+}
+
+pub fn pause(self: *Self) void {
+    self.prev_tick = null;
+    self.is_paused = true;
+}
+
+pub fn unpause(self: *Self) void {
+    self.is_paused = false;
 }

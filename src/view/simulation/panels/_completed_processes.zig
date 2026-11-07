@@ -88,7 +88,7 @@ fn updateCards(self: *Self) !void {
 
     const plural_S = if (queue.len == 1) "" else "s";
     const msg: []const u8 =
-        if (self.ctx.planner.isComplete())
+        if (self.ctx.isComplete())
             "Todos los procesos terminados"
         else
             try self.alloc.print("{d} proceso{s} terminado{s}", .{ queue.len, plural_S, plural_S });

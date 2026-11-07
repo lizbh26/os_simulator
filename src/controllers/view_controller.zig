@@ -34,14 +34,15 @@ pub fn handleKey(self: *Self, key: vaxis.Key) !void {
 
             if (self.ctx.is_paused) {
                 if (key.matches('c', .{})) {
-                    self.ctx.is_paused = false;
+                    self.ctx.unpause();
                 }
             } else {
                 var planner = &self.ctx.planner;
                 if (key.matches('p', .{})) {
-                    self.ctx.is_paused = true;
+                    self.ctx.pause();
                 } else if (key.matches('b', .{})) {
                     self.ctx.phase = .overview;
+                    self.ctx.pause();
                 } else if (key.matches('e', .{})) {
                     try planner.blockCurrentProcess();
                 } else if (key.matches('w', .{})) {
@@ -56,6 +57,7 @@ pub fn handleKey(self: *Self, key: vaxis.Key) !void {
 
             if (key.matches('c', .{})) {
                 self.ctx.phase = .simulation;
+                self.ctx.unpause();
             }
         },
     }
